@@ -1,81 +1,29 @@
 import SwiftUI
 
-struct Task: Identifiable {
-    let id = UUID()
-    var title: String
-    var isDone: Bool = false
-}
-
-struct TaskListView: View {
-    @State private var tasks: [Task] = []
-    @State private var newTaskTitle: String = ""
-
+struct ContentView: View {
     var body: some View {
-        VStack {
-            // Input field + Add button
-            HStack {
-                TextField("Enter new task", text: $newTaskTitle)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .padding(.horizontal)
+        NavigationView {
+            VStack(spacing: 30) {
+                Text("Sveiks iPhone lietotāj!")
+                    .font(.largeTitle)
+                    .multilineTextAlignment(.center)
+                    .padding()
 
-                Button(action: addTask) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title)
-                        .foregroundColor(.blue)
-                }
-                .disabled(newTaskTitle.isEmpty)
-            }
-            .padding(.top)
-
-            // Task List
-            List {
-                ForEach($tasks) { $task in
-                    HStack {
-                        Button(action: {
-                            task.isDone.toggle()
-                        }) {
-                            Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
-                                .foregroundColor(task.isDone ? .green : .gray)
-                        }
-
-                        Text(task.title)
-                            .strikethrough(task.isDone, color: .gray)
-                            .foregroundColor(task.isDone ? .gray : .primary)
-
-                        Spacer()
-
-                        // Delete button for macOS
-                        Button(action: {
-                            deleteTask(task: task)
-                        }) {
-                            Image(systemName: "trash")
-                                .foregroundColor(.red)
-                        }
-                        .buttonStyle(BorderlessButtonStyle()) // MacOS requirement for buttons in List
-                    }
+                NavigationLink(destination: SecondView()) {
+                    Text("Ej uz To-Do listu ➡️")
+                        .font(.title2)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
                 }
             }
-        }
-        .padding()
-    }
-
-    private func addTask() {
-        let task = Task(title: newTaskTitle)
-        tasks.append(task)
-        newTaskTitle = ""
-    }
-
-    private func deleteTask(task: Task) {
-        if let index = tasks.firstIndex(where: { $0.id == task.id }) {
-            tasks.remove(at: index)
+            .padding()
+            .navigationTitle("Sākums")
         }
     }
 }
 
-struct TaskListView_Previews: PreviewProvider {
-    static var previews: some View {
-        TaskListView()
-            .frame(width: 400, height: 600)
-    }
+#Preview {
+    ContentView()
 }
-
