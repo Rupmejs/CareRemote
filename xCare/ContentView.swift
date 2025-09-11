@@ -1,66 +1,72 @@
-//
-//  ContentView.swift
-//  xCare
-//
-//  Created by Linards Rupmejs on 11/09/2025.
-//
-
 import SwiftUI
-import SwiftData
+
+struct Task: Identifiable {
+    let id = UUID()
+    var title: String
+    var isDone: Bool = false
+}
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @State private var tasks: [Task] = []
+    @State private var newTaskTitle: String = ""
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+        NavigationView {
+            VStack {
+                // Input field + Add button
+                HStack {
+                    TextField("Enter new task", text: $newTaskTitle)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding(.horizontal)
+
+                    Button(action: addTask) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title)
+                            .foregroundColor(.blue)
                     }
+                    .disabled(newTaskTitle.isEmpty)
                 }
-                .onDelete(perform: deleteItems)
+                .padding(.top)
+
+                // Task List
+                List {
+                    ForEach($tasks) { $task in
+                        HStack {
+                            Button(action: {
+                                task.isDone.toggle()
+                            }) {
+                                Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
+                                    .foregroundColor(task.isDone ? .green : .gray)
+                            }
+
+                            Text(task.title)
+                                .strikethrough(task.isDone, color: .gray)
+                                .foregroundColor(task.isDone ? .gray : .primary)
+                        }
+                    }
+                    .onDelete(perform: deleteTask)
+                }
             }
-#if os(macOS)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-#endif
+            .navigationTitle("My To-Do List")
             .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-#endif
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
+                EditButton()
             }
-        } detail: {
-            Text("Select an item")
         }
     }
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
+    // MARK: - Functions
+    private func addTask() {
+        let task = Task(title: newTaskTitle)
+        tasks.append(task)
+        newTaskTitle = ""
     }
 
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
-        }
+    private func deleteTask(at offsets: IndexSet) {
+        tasks.remove(atOffsets: offsets)
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
 }
+
