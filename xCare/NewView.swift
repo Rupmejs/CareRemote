@@ -2,54 +2,55 @@ import SwiftUI
 
 struct NewView: View {
     var body: some View {
-        ZStack {
-            // Full-screen beige background
-            Color(red: 0.96, green: 0.95, blue: 0.90)
-                .ignoresSafeArea()
+        NavigationStack { // <-- Embed everything in NavigationStack
+            ZStack {
+                // Full-screen beige background
+                Color(red: 0.96, green: 0.95, blue: 0.90)
+                    .ignoresSafeArea()
 
-            VStack(spacing: 30) {
+                VStack(spacing: 30) {
 
-                Spacer()
-                    .frame(height: 150) // keeps title higher
+                    Spacer()
+                        .frame(height: 150) // keeps title higher
 
-                // xCare title
-                Text("xCare")
-                    .font(.system(size: 48, weight: .bold, design: .rounded))
-                    .foregroundColor(.blue)
-                    .padding(.bottom, 0)
+                    // xCare title
+                    Text("xCare")
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .foregroundColor(.blue)
 
-                Spacer() // pushes buttons lower
+                    Spacer() // pushes buttons lower
 
-                // SecondView button
-                NavigationLink(destination: SecondView()) {
-                    Text("Nanny")
-                        .font(.system(size: 36, weight: .bold, design: .rounded))
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.gray)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                        .padding(.horizontal)
+                    // Nannies button
+                    NavigationLink(destination: RegisterNannies()) {
+                        Text("Nannies")
+                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.gray)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                            .padding(.horizontal)
+                    }
+
+                    // Parents button
+                    NavigationLink(destination: RegisterParents()) {
+                        Text("Parents")
+                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.gray)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                            .padding(.horizontal)
+                    }
+
+                    Spacer() // pushes buttons closer to bottom
                 }
-
-                // ThirdView button
-                NavigationLink(destination: ThirdView()) {
-                    Text("Baby")
-                        .font(.system(size: 36, weight: .bold, design: .rounded))
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.gray)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                        .padding(.horizontal)
-                }
-
-                Spacer() // optional bottom spacer
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("xCare")
         }
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationTitle("xCare") // title at top of navigation bar
     }
 }
 
