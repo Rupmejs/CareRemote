@@ -1,88 +1,93 @@
 import SwiftUI
 
 struct RegisterNannies: View {
-    @State private var name: String = ""
+    @State private var username: String = ""
     @State private var email: String = ""
     @State private var password: String = ""
-    @State private var registrationMessage: String = ""
+    @State private var confirmPassword: String = ""
 
     var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                TextField("Name", text: $name)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .padding(.horizontal)
-                
-                TextField("Email", text: $email)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .padding(.horizontal)
-                
-                SecureField("Password", text: $password)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .padding(.horizontal)
-                
-                Button(action: registerNanny) {
-                    Text("Register")
-                        .font(.title2)
+        NavigationView { // Wrap everything in NavigationView
+            ZStack {
+                Color(red: 0.96, green: 0.95, blue: 0.90).ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: 30) {
+                        Spacer().frame(height: 30)
+
+                        Text("Nanny Register")
+                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .foregroundColor(Color(red: 0.3, green: 0.6, blue: 1.0))
+
+                        Text("Please fill in your details to register")
+                            .foregroundColor(.black)
+                            .font(.system(size: 16))
+
+                        VStack(spacing: 20) {
+                            TextField("", text: $username, prompt: Text("Username").foregroundColor(.black.opacity(0.7)))
+                                .padding()
+                                .background(Color.gray.opacity(0.2))
+                                .cornerRadius(12)
+
+                            TextField("", text: $email, prompt: Text("Email").foregroundColor(.black.opacity(0.7)))
+                                .keyboardType(.emailAddress)
+                                .autocapitalization(.none)
+                                .padding()
+                                .background(Color.gray.opacity(0.2))
+                                .cornerRadius(12)
+
+                            SecureField("", text: $password, prompt: Text("Password").foregroundColor(.black.opacity(0.7)))
+                                .padding()
+                                .background(Color.gray.opacity(0.2))
+                                .cornerRadius(12)
+
+                            SecureField("", text: $confirmPassword, prompt: Text("Confirm Password").foregroundColor(.black.opacity(0.7)))
+                                .padding()
+                                .background(Color.gray.opacity(0.2))
+                                .cornerRadius(12)
+
+                            Button(action: {
+                                print("Sign Up tapped")
+                            }) {
+                                Text("Sign Up")
+                                    .foregroundColor(.white)
+                                    .font(.headline)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color(red: 0.3, green: 0.6, blue: 1.0))
+                                    .cornerRadius(12)
+                            }
+
+                            HStack {
+                                Text("Already have an account?")
+                                    .foregroundColor(.black)
+                                NavigationLink(destination: LoginNanny()) {
+                                    Text("Log In")
+                                        .foregroundColor(Color(red: 0.3, green: 0.6, blue: 1.0))
+                                        .bold()
+                                }
+                            }
+                            .padding(.top, 10)
+                        }
                         .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                        .padding(.horizontal)
-                }
-                
-                if !registrationMessage.isEmpty {
-                    Text(registrationMessage)
-                        .foregroundColor(.green)
-                        .padding(.top, 10)
-                }
+                        .background(Color.white.opacity(0.9))
+                        .cornerRadius(20)
+                        .shadow(color: .gray.opacity(0.3), radius: 8, x: 0, y: 4)
+                        .padding(.horizontal, 20)
 
-                Spacer()
-            }
-            .navigationTitle("Nanny Registration")
-            .navigationBarTitleDisplayMode(.inline)
-        }
-    }
-
-    func registerNanny() {
-        guard !name.isEmpty, !email.isEmpty, !password.isEmpty else {
-            registrationMessage = "Please fill in all fields."
-            return
-        }
-        
-        // Format registration data
-        let entry = "Name: \(name), Email: \(email), Password: \(password)\n"
-        
-        // Get path to documents folder
-        if let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-            let fileURL = dir.appendingPathComponent("RegisteredNannies.txt")
-            
-            // Append to file
-            if FileManager.default.fileExists(atPath: fileURL.path) {
-                if let fileHandle = try? FileHandle(forWritingTo: fileURL) {
-                    fileHandle.seekToEndOfFile()
-                    if let data = entry.data(using: .utf8) {
-                        fileHandle.write(data)
-                        fileHandle.closeFile()
+                        Spacer()
                     }
+                    .padding(.vertical, 30)
                 }
-            } else {
-                // File doesn't exist yet, create it
-                try? entry.write(to: fileURL, atomically: true, encoding: .utf8)
             }
-            
-            registrationMessage = "Nanny Registered Successfully!"
+            .navigationBarTitle("", displayMode: .inline)
         }
-        
-        // Clear input fields
-        name = ""
-        email = ""
-        password = ""
     }
 }
 
-#Preview {
-    RegisterNannies()
+struct RegisterNannies_Previews: PreviewProvider {
+    static var previews: some View {
+        RegisterNannies()
+    }
 }
 
