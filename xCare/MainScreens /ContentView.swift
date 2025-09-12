@@ -110,7 +110,67 @@ struct WidgetView: View {
     }
 }
 
-// MARK: - ContentView with swipe left/right
+// MARK: - SplashView
+struct SplashView: View {
+    @Binding var isActive: Bool
+    @State private var textShown = "" // The text being typed
+    private let fullText = "xCare"
+    @State private var scale: CGFloat = 1.2
+    @State private var opacity: Double = 0
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.5).ignoresSafeArea() // Transparent overlay
+            Text(textShown)
+                .font(.system(size: 50, weight: .bold, design: .rounded))
+                .foregroundColor(Color(red: 0.4, green: 0.8, blue: 1.0)) // Light blue
+                .tracking(6)
+                .scaleEffect(scale)
+                .opacity(opacity)
+                .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+                .onAppear {
+                    animateText()
+                }
+        }
+        .onTapGesture {
+            withAnimation(.easeOut(duration: 0.3)) {
+                isActive = false
+            }
+        }
+        .transition(.opacity)
+    }
+
+    private func animateText() {
+        textShown = ""
+        scale = 1.2
+        opacity = 0
+
+        for (index, char) in fullText.enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.2) {
+                textShown.append(char)
+                withAnimation(.easeIn(duration: 0.2)) {
+                    scale = 1.0
+                    opacity = 1.0
+                }
+
+                if textShown.count == fullText.count {
+                    // Small bounce then fade out
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            scale = 1.5
+                            opacity = 0
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            isActive = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - ContentView
 struct ContentView: View {
     @ObservedObject private var locationManager = LocationManager.shared
     @State private var userLocation: CLLocationCoordinate2D?
@@ -119,6 +179,7 @@ struct ContentView: View {
     }
     @State private var showingActionSheet = false
     @State private var scrollOffset: CGFloat = 0
+    @State private var showSplash = true // Splash flag
 
     private let sidePadding: CGFloat = 20
     private let widgetSpacing: CGFloat = 15
@@ -132,22 +193,33 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationView {
-            TabView(selection: $selectedTab) {
-                NewView() // Tab 0
-                    .tag(0)
+        ZStack {
+            // Main app content with blur when splash is active
+            NavigationView {
+                TabView(selection: $selectedTab) {
+                    NewView() // Tab 0
+                        .tag(0)
 
-                mainContentView // Tab 1
-                    .tag(1)
+                    mainContentView // Tab 1
+                        .tag(1)
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .background(backgroundColor.ignoresSafeArea())
+                .edgesIgnoringSafeArea(.all)
+                .navigationBarHidden(true)
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .background(backgroundColor.ignoresSafeArea())
-            .edgesIgnoringSafeArea(.all)
-            .navigationBarHidden(true)
-        }
-        .navigationViewStyle(StackNavigationViewStyle())
-    }
+            .navigationViewStyle(StackNavigationViewStyle())
+            .blur(radius: showSplash ? 10 : 0)
+            .animation(.easeInOut(duration: 0.3), value: showSplash)
 
+            // Splash overlay
+            if showSplash {
+                SplashView(isActive: $showSplash)
+                    .zIndex(1)
+            }
+        }
+    }
+    
     var mainContentView: some View {
         ZStack(alignment: .topTrailing) {
             ScrollView {
