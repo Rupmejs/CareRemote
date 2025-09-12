@@ -110,7 +110,7 @@ struct WidgetView: View {
     }
 }
 
-// MARK: - ContentView
+// MARK: - ContentView with swipe left/right
 struct ContentView: View {
     @ObservedObject private var locationManager = LocationManager.shared
     @State private var userLocation: CLLocationCoordinate2D?
@@ -125,115 +125,129 @@ struct ContentView: View {
     private let mapHeight: CGFloat = 200
     private let backgroundColor = Color(red: 0.96, green: 0.95, blue: 0.90)
 
+    @State private var selectedTab = 1 // Start on mainContentView
+
     init() {
         _extraWidgets = State(initialValue: loadWidgets())
     }
 
     var body: some View {
         NavigationView {
-            ZStack(alignment: .topTrailing) {
-                ScrollView {
-                    VStack(spacing: 20) {
-                        GeometryReader { geo -> Color in
-                            DispatchQueue.main.async {
-                                scrollOffset = geo.frame(in: .global).minY
-                            }
-                            return Color.clear
+            TabView(selection: $selectedTab) {
+                NewView() // Tab 0
+                    .tag(0)
+
+                mainContentView // Tab 1
+                    .tag(1)
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .background(backgroundColor.ignoresSafeArea())
+            .edgesIgnoringSafeArea(.all)
+            .navigationBarHidden(true)
+        }
+        .navigationViewStyle(StackNavigationViewStyle())
+    }
+
+    var mainContentView: some View {
+        ZStack(alignment: .topTrailing) {
+            ScrollView {
+                VStack(spacing: 20) {
+                    GeometryReader { geo -> Color in
+                        DispatchQueue.main.async {
+                            scrollOffset = geo.frame(in: .global).minY
                         }
-                        .frame(height: 0)
+                        return Color.clear
+                    }
+                    .frame(height: 0)
 
-                        Spacer().frame(height: 150)
+                    Spacer().frame(height: 150)
 
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 20)
-                                .fill(Color.white.opacity(0.7))
-                                .shadow(radius: 6)
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(Color.white.opacity(0.7))
+                            .shadow(radius: 6)
 
-                            VStack(spacing: widgetSpacing) {
-                                // Map
-                                UserTrackingMapView(userLocation: $userLocation)
-                                    .frame(height: mapHeight)
-                                    .cornerRadius(12)
-                                    .shadow(color: .gray.opacity(0.4), radius: 5, x: 0, y: 2)
+                        VStack(spacing: widgetSpacing) {
+                            // Map
+                            UserTrackingMapView(userLocation: $userLocation)
+                                .frame(height: mapHeight)
+                                .cornerRadius(12)
+                                .shadow(color: .gray.opacity(0.4), radius: 5, x: 0, y: 2)
+                                .frame(maxWidth: .infinity)
+
+                            // Reminders + Calendar row
+                            HStack(spacing: widgetSpacing) {
+                                WidgetView(widget: WidgetModel(title: "Reminders", items: ["Buy groceries", "Call Alice"], size: .small))
                                     .frame(maxWidth: .infinity)
+                                WidgetView(widget: WidgetModel(title: "Calendar", items: ["Meeting 3 PM", "Dentist 10 AM"], size: .small))
+                                    .frame(maxWidth: .infinity)
+                            }
 
-                                // Reminders + Calendar row
-                                HStack(spacing: widgetSpacing) {
-                                    WidgetView(widget: WidgetModel(title: "Reminders", items: ["Buy groceries", "Call Alice"], size: .small))
-                                        .frame(maxWidth: .infinity)
-                                    WidgetView(widget: WidgetModel(title: "Calendar", items: ["Meeting 3 PM", "Dentist 10 AM"], size: .small))
-                                        .frame(maxWidth: .infinity)
-                                }
+                            // Extra widgets
+                            VStack(spacing: widgetSpacing) {
+                                ForEach(0..<extraWidgets.count, id: \.self) { i in
+                                    let widget = extraWidgets[i]
 
-                                // Extra widgets
-                                VStack(spacing: widgetSpacing) {
-                                    ForEach(0..<extraWidgets.count, id: \.self) { i in
-                                        let widget = extraWidgets[i]
-
-                                        if widget.size == .large {
-                                            WidgetView(widget: widget)
-                                                .frame(maxWidth: .infinity)
-                                                .contextMenu {
-                                                    Button("Delete") { deleteWidget(widget) }
-                                                }
+                                    if widget.size == .large {
+                                        WidgetView(widget: widget)
+                                            .frame(maxWidth: .infinity)
+                                            .contextMenu {
+                                                Button("Delete") { deleteWidget(widget) }
+                                            }
+                                    } else {
+                                        if i + 1 < extraWidgets.count, extraWidgets[i + 1].size == .small {
+                                            HStack(spacing: widgetSpacing) {
+                                                WidgetView(widget: widget)
+                                                    .frame(maxWidth: .infinity)
+                                                    .contextMenu { Button("Delete") { deleteWidget(widget) } }
+                                                WidgetView(widget: extraWidgets[i + 1])
+                                                    .frame(maxWidth: .infinity)
+                                                    .contextMenu { Button("Delete") { deleteWidget(extraWidgets[i + 1]) } }
+                                            }
                                         } else {
-                                            // Pair small widgets horizontally
-                                            if i + 1 < extraWidgets.count, extraWidgets[i + 1].size == .small {
-                                                HStack(spacing: widgetSpacing) {
-                                                    WidgetView(widget: widget)
-                                                        .frame(maxWidth: .infinity)
-                                                        .contextMenu { Button("Delete") { deleteWidget(widget) } }
-                                                    WidgetView(widget: extraWidgets[i + 1])
-                                                        .frame(maxWidth: .infinity)
-                                                        .contextMenu { Button("Delete") { deleteWidget(extraWidgets[i + 1]) } }
-                                                }
-                                            } else {
-                                                HStack(spacing: widgetSpacing) {
-                                                    WidgetView(widget: widget)
-                                                        .frame(maxWidth: .infinity)
-                                                        .contextMenu { Button("Delete") { deleteWidget(widget) } }
-                                                    Spacer().frame(maxWidth: .infinity)
-                                                }
+                                            HStack(spacing: widgetSpacing) {
+                                                WidgetView(widget: widget)
+                                                    .frame(maxWidth: .infinity)
+                                                    .contextMenu { Button("Delete") { deleteWidget(widget) } }
+                                                Spacer().frame(maxWidth: .infinity)
                                             }
                                         }
                                     }
                                 }
                             }
-                            .padding()
                         }
-                        .padding(.horizontal, sidePadding)
-                        .onLongPressGesture { showingActionSheet = true }
-
-                        Spacer()
-                    }
-                    .padding(.vertical, 20)
-                }
-                .background(backgroundColor.ignoresSafeArea())
-                .navigationBarHidden(true)
-
-                // Settings button
-                NavigationLink(destination: Text("Settings View")) {
-                    Image(systemName: "gear")
-                        .font(.title)
-                        .foregroundColor(.blue)
                         .padding()
-                        .background(Color.white.opacity(0.8))
-                        .clipShape(Circle())
-                        .shadow(radius: 3)
+                    }
+                    .padding(.horizontal, sidePadding)
+                    .onLongPressGesture { showingActionSheet = true }
+
+                    Spacer()
                 }
-                .padding()
-                .opacity(scrollOffset >= -10 ? 1 : 0)
-                .animation(.easeInOut, value: scrollOffset)
+                .padding(.vertical, 20)
             }
-            .actionSheet(isPresented: $showingActionSheet) {
-                ActionSheet(title: Text("Add Widget"), message: Text("Select widget size"), buttons: [
-                    .default(Text("Widget 1 (Small)")) { addExtraWidget(size: .small) },
-                    .default(Text("Widget 2 (Large)")) { addExtraWidget(size: .large) },
-                    .cancel()
-                ])
+            .background(backgroundColor.ignoresSafeArea())
+
+            // Settings button
+            NavigationLink(destination: Text("Settings View")) {
+                Image(systemName: "gear")
+                    .font(.title)
+                    .foregroundColor(.blue)
+                    .padding()
+                    .background(Color.white.opacity(0.8))
+                    .clipShape(Circle())
+                    .shadow(radius: 3)
             }
+            .padding()
+            .opacity(scrollOffset >= -10 ? 1 : 0)
+            .animation(.easeInOut, value: scrollOffset)
         }
-        .navigationViewStyle(StackNavigationViewStyle())
+        .actionSheet(isPresented: $showingActionSheet) {
+            ActionSheet(title: Text("Add Widget"), message: Text("Select widget size"), buttons: [
+                .default(Text("Widget 1 (Small)")) { addExtraWidget(size: .small) },
+                .default(Text("Widget 2 (Large)")) { addExtraWidget(size: .large) },
+                .cancel()
+            ])
+        }
     }
 
     // MARK: - Add/Delete Widgets
