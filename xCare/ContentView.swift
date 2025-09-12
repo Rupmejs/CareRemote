@@ -28,7 +28,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 }
 
-// MARK: - UIViewRepresentable for MKMapView
+// MARK: - MapView
 struct UserTrackingMapView: UIViewRepresentable {
     @Binding var userLocation: CLLocationCoordinate2D?
 
@@ -61,124 +61,206 @@ struct UserTrackingMapView: UIViewRepresentable {
     }
 }
 
-// MARK: - Scroll Offset PreferenceKey
-struct ScrollOffsetKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
+// MARK: - Widget Model
+struct WidgetModel: Identifiable, Equatable, Codable {
+    let id: UUID
+    var title: String
+    var items: [String]
+    var size: WidgetSize
+
+    init(id: UUID = UUID(), title: String, items: [String], size: WidgetSize) {
+        self.id = id
+        self.title = title
+        self.items = items
+        self.size = size
     }
 }
 
-// MARK: - ContentView
-struct ContentView: View {
-    @StateObject private var appData = AppData()
-    @ObservedObject private var locationManager = LocationManager.shared
-    @State private var userLocation: CLLocationCoordinate2D?
-    @State private var scrollOffset: CGFloat = 0
-
-    private let mapHeight: CGFloat = 200
-    private let widgetHeight: CGFloat = 170
-    private let sidePadding: CGFloat = 20
-    private let widgetSpacing: CGFloat = 15
-    private let navBarHeight: CGFloat = 44
-    private let backgroundColor = Color(red: 0.96, green: 0.95, blue: 0.90)
-
-    var navBarOpacity: Double {
-        let offset = min(max(-scrollOffset / 100, 0), 1)
-        return Double(offset)
-    }
-
-    var body: some View {
-        NavigationView {
-            ZStack(alignment: .top) {
-                ScrollView {
-                    GeometryReader { geo in
-                        Color.clear
-                            .preference(key: ScrollOffsetKey.self, value: geo.frame(in: .global).minY)
-                    }
-                    .frame(height: 0)
-
-                    VStack(spacing: 25) {
-                        Spacer().frame(height: 180)
-
-                        // Map
-                        UserTrackingMapView(userLocation: $userLocation)
-                            .frame(height: mapHeight)
-                            .cornerRadius(12)
-                            .shadow(color: .gray.opacity(0.4), radius: 5, x: 0, y: 2)
-                            .padding(.horizontal, sidePadding)
-                            .onReceive(locationManager.$userLocation) { loc in
-                                userLocation = loc
-                            }
-
-                        // Reminder + Calendar widgets
-                        HStack(spacing: widgetSpacing) {
-                            NavigationLink(destination: ReminderView(appData: appData)) {
-                                WidgetView(title: "Reminders", items: appData.reminders, placeholder: "No reminders yet")
-                                    .frame(height: widgetHeight)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-
-                            NavigationLink(destination: CalendarView(appData: appData)) {
-                                WidgetView(title: "Calendar", items: appData.calendarEvents, placeholder: "No events yet")
-                                    .frame(height: widgetHeight)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
-                        .padding(.horizontal, sidePadding)
-                    }
-                    .padding(.bottom, 50)
-                }
-                .background(backgroundColor)
-                .ignoresSafeArea()
-                .onPreferenceChange(ScrollOffsetKey.self) { value in
-                    scrollOffset = value
-                }
-
-                // Fading navigation bar overlay
-                Color(red: 0.96, green: 0.95, blue: 0.90)
-                    .opacity(navBarOpacity)
-                    .frame(height: navBarHeight)
-                    .ignoresSafeArea(edges: .top)
-            }
-            .navigationTitle("Dashboard")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink(destination: NewView()) {
-                        Image(systemName: "plus")
-                            .font(.title)
-                            .foregroundColor(.blue)
-                    }
-                }
-            }
-        }
-    }
+enum WidgetSize: String, Codable {
+    case small
+    case large
 }
 
-// MARK: - WidgetView
+// MARK: - Widget View
 struct WidgetView: View {
-    let title: String
-    let items: [String]
-    let placeholder: String
-
+    var widget: WidgetModel
     var body: some View {
-        VStack(alignment: .leading) {
-            Text(title).font(.headline).padding(.bottom, 5)
-            if items.isEmpty {
-                Text(placeholder).foregroundColor(.gray).italic()
+        VStack(alignment: .leading, spacing: 5) {
+            Text(widget.title)
+                .font(.headline)
+                .foregroundColor(.black)
+            if widget.items.isEmpty {
+                Text("Empty widget")
+                    .foregroundColor(.black)
+                    .italic()
             } else {
-                ForEach(items, id: \.self) { item in
+                ForEach(widget.items, id: \.self) { item in
                     Text("• \(item)")
+                        .foregroundColor(.black)
                 }
             }
             Spacer()
         }
         .padding()
         .frame(maxWidth: .infinity)
-        .background(Color.white)
+        .frame(height: 150)
+        .background(Color.white.opacity(0.7))
         .cornerRadius(12)
         .shadow(color: .gray.opacity(0.4), radius: 5, x: 0, y: 2)
+    }
+}
+
+// MARK: - ContentView
+struct ContentView: View {
+    @ObservedObject private var locationManager = LocationManager.shared
+    @State private var userLocation: CLLocationCoordinate2D?
+    @State private var extraWidgets: [WidgetModel] = [] {
+        didSet { saveWidgets() }
+    }
+    @State private var showingActionSheet = false
+    @State private var scrollOffset: CGFloat = 0
+
+    private let sidePadding: CGFloat = 20
+    private let widgetSpacing: CGFloat = 15
+    private let mapHeight: CGFloat = 200
+    private let backgroundColor = Color(red: 0.96, green: 0.95, blue: 0.90)
+
+    init() {
+        _extraWidgets = State(initialValue: loadWidgets())
+    }
+
+    var body: some View {
+        NavigationView {
+            ZStack(alignment: .topTrailing) {
+                ScrollView {
+                    VStack(spacing: 20) {
+                        GeometryReader { geo -> Color in
+                            DispatchQueue.main.async {
+                                scrollOffset = geo.frame(in: .global).minY
+                            }
+                            return Color.clear
+                        }
+                        .frame(height: 0)
+
+                        Spacer().frame(height: 150)
+
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(Color.white.opacity(0.7))
+                                .shadow(radius: 6)
+
+                            VStack(spacing: widgetSpacing) {
+                                // Map
+                                UserTrackingMapView(userLocation: $userLocation)
+                                    .frame(height: mapHeight)
+                                    .cornerRadius(12)
+                                    .shadow(color: .gray.opacity(0.4), radius: 5, x: 0, y: 2)
+                                    .frame(maxWidth: .infinity)
+
+                                // Reminders + Calendar row
+                                HStack(spacing: widgetSpacing) {
+                                    WidgetView(widget: WidgetModel(title: "Reminders", items: ["Buy groceries", "Call Alice"], size: .small))
+                                        .frame(maxWidth: .infinity)
+                                    WidgetView(widget: WidgetModel(title: "Calendar", items: ["Meeting 3 PM", "Dentist 10 AM"], size: .small))
+                                        .frame(maxWidth: .infinity)
+                                }
+
+                                // Extra widgets
+                                VStack(spacing: widgetSpacing) {
+                                    ForEach(0..<extraWidgets.count, id: \.self) { i in
+                                        let widget = extraWidgets[i]
+
+                                        if widget.size == .large {
+                                            WidgetView(widget: widget)
+                                                .frame(maxWidth: .infinity)
+                                                .contextMenu {
+                                                    Button("Delete") { deleteWidget(widget) }
+                                                }
+                                        } else {
+                                            // Pair small widgets horizontally
+                                            if i + 1 < extraWidgets.count, extraWidgets[i + 1].size == .small {
+                                                HStack(spacing: widgetSpacing) {
+                                                    WidgetView(widget: widget)
+                                                        .frame(maxWidth: .infinity)
+                                                        .contextMenu { Button("Delete") { deleteWidget(widget) } }
+                                                    WidgetView(widget: extraWidgets[i + 1])
+                                                        .frame(maxWidth: .infinity)
+                                                        .contextMenu { Button("Delete") { deleteWidget(extraWidgets[i + 1]) } }
+                                                }
+                                            } else {
+                                                HStack(spacing: widgetSpacing) {
+                                                    WidgetView(widget: widget)
+                                                        .frame(maxWidth: .infinity)
+                                                        .contextMenu { Button("Delete") { deleteWidget(widget) } }
+                                                    Spacer().frame(maxWidth: .infinity)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            .padding()
+                        }
+                        .padding(.horizontal, sidePadding)
+                        .onLongPressGesture { showingActionSheet = true }
+
+                        Spacer()
+                    }
+                    .padding(.vertical, 20)
+                }
+                .background(backgroundColor.ignoresSafeArea())
+                .navigationBarHidden(true)
+
+                // Settings button
+                NavigationLink(destination: Text("Settings View")) {
+                    Image(systemName: "gear")
+                        .font(.title)
+                        .foregroundColor(.blue)
+                        .padding()
+                        .background(Color.white.opacity(0.8))
+                        .clipShape(Circle())
+                        .shadow(radius: 3)
+                }
+                .padding()
+                .opacity(scrollOffset >= -10 ? 1 : 0)
+                .animation(.easeInOut, value: scrollOffset)
+            }
+            .actionSheet(isPresented: $showingActionSheet) {
+                ActionSheet(title: Text("Add Widget"), message: Text("Select widget size"), buttons: [
+                    .default(Text("Widget 1 (Small)")) { addExtraWidget(size: .small) },
+                    .default(Text("Widget 2 (Large)")) { addExtraWidget(size: .large) },
+                    .cancel()
+                ])
+            }
+        }
+        .navigationViewStyle(StackNavigationViewStyle())
+    }
+
+    // MARK: - Add/Delete Widgets
+    private func addExtraWidget(size: WidgetSize) {
+        let newWidget = WidgetModel(title: size == .small ? "Widget 1" : "Widget 2", items: [], size: size)
+        extraWidgets.append(newWidget)
+    }
+
+    private func deleteWidget(_ widget: WidgetModel) {
+        if let index = extraWidgets.firstIndex(of: widget) {
+            extraWidgets.remove(at: index)
+        }
+    }
+
+    // MARK: - Persistence
+    private func saveWidgets() {
+        if let encoded = try? JSONEncoder().encode(extraWidgets) {
+            UserDefaults.standard.set(encoded, forKey: "extraWidgets")
+        }
+    }
+
+    private func loadWidgets() -> [WidgetModel] {
+        if let data = UserDefaults.standard.data(forKey: "extraWidgets"),
+           let decoded = try? JSONDecoder().decode([WidgetModel].self, from: data) {
+            return decoded
+        }
+        return []
     }
 }
 
