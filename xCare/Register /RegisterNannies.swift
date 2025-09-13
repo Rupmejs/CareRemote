@@ -66,7 +66,7 @@ struct RegisterNannies: View {
                                 }
                             }
 
-                            // Confirm Password (no eye)
+                            // Confirm Password
                             SecureField("", text: $confirmPassword, prompt: Text("Confirm Password").foregroundColor(.black.opacity(0.7)))
                                 .foregroundColor(.black)
                                 .padding()
@@ -128,12 +128,11 @@ struct RegisterNannies: View {
             return
         }
 
-        let nannyCredentials: [String: String] = [
-            "username": username,
-            "email": email,
-            "password": password
-        ]
-        UserDefaults.standard.set(nannyCredentials, forKey: "nannyUser")
+        // Save to UserDefaults
+        var savedUsers = UserDefaults.standard.array(forKey: "nannyUsers") as? [[String: String]] ?? []
+        let newUser: [String: String] = ["username": username, "email": email, "password": password]
+        savedUsers.append(newUser)
+        UserDefaults.standard.set(savedUsers, forKey: "nannyUsers")
 
         errorMessage = nil
         navigateToLogin = true

@@ -7,18 +7,10 @@ struct LoginParents: View {
     @State private var navigateToHome = false
     @State private var errorMessage: String?
 
-    init() {
-        // Navigation bar appearance
-        let appearance = UINavigationBarAppearance()
-        appearance.configureWithTransparentBackground()
-        appearance.backgroundColor = UIColor(red: 0.96, green: 0.95, blue: 0.90, alpha: 1) // beige
-        appearance.titleTextAttributes = [.foregroundColor: UIColor.black]
-        UINavigationBar.appearance().standardAppearance = appearance
-        UINavigationBar.appearance().scrollEdgeAppearance = appearance
-    }
+    @EnvironmentObject var appState: AppState
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             ZStack {
                 Color(red: 0.96, green: 0.95, blue: 0.90).ignoresSafeArea()
 
@@ -30,13 +22,12 @@ struct LoginParents: View {
                             .font(.system(size: 36, weight: .bold, design: .rounded))
                             .foregroundColor(Color(red: 0.3, green: 0.6, blue: 1.0))
 
-                        Text("Enter your credentials to log in")
+                        Text("Please enter your credentials to log in")
                             .foregroundColor(.black)
                             .font(.system(size: 16))
-                            .padding(.top, 5)
 
                         VStack(spacing: 20) {
-                            // Email field
+                            // Email
                             TextField("", text: $email, prompt: Text("Email").foregroundColor(.black.opacity(0.7)))
                                 .keyboardType(.emailAddress)
                                 .autocapitalization(.none)
@@ -45,7 +36,7 @@ struct LoginParents: View {
                                 .background(Color.gray.opacity(0.2))
                                 .cornerRadius(12)
 
-                            // Password field with toggle
+                            // Password with eye toggle
                             ZStack(alignment: .trailing) {
                                 if showPassword {
                                     TextField("", text: $password, prompt: Text("Password").foregroundColor(.black.opacity(0.7)))
@@ -76,16 +67,25 @@ struct LoginParents: View {
                             }
 
                             // Log In Button
-                            Button(action: { logIn() }) {
+                            Button(action: login) {
                                 Text("Log In")
                                     .foregroundColor(.white)
-                                    .font(.headline)
                                     .frame(maxWidth: .infinity)
                                     .padding()
                                     .background(Color(red: 0.3, green: 0.6, blue: 1.0))
                                     .cornerRadius(12)
                             }
-                            .padding(.top, 10)
+
+                            // Navigate to Register
+                            HStack {
+                                Text("Don't have an account?")
+                                    .foregroundColor(.black)
+                                NavigationLink(destination: RegisterParents()) {
+                                    Text("Sign Up")
+                                        .foregroundColor(Color(red: 0.3, green: 0.6, blue: 1.0))
+                                        .bold()
+                                }
+                            }
                         }
                         .padding()
                         .background(Color.white.opacity(0.9))
@@ -98,8 +98,8 @@ struct LoginParents: View {
                     .padding(.vertical, 30)
                 }
 
-                // NavigationLink to HomeView
-                NavigationLink(destination: HomeView(), isActive: $navigateToHome) {
+                // Navigate to Home
+                NavigationLink(destination: HomeView().environmentObject(appState), isActive: $navigateToHome) {
                     EmptyView()
                 }
             }
@@ -107,22 +107,22 @@ struct LoginParents: View {
         }
     }
 
-    private func logIn() {
-        guard let savedCredentials = UserDefaults.standard.dictionary(forKey: "parentUser") as? [String: String],
-              savedCredentials["email"] == email,
-              savedCredentials["password"] == password else {
-            errorMessage = "Invalid credentials"
+    private func login() {
+        guard !email.isEmpty, !password.isEmpty else {
+            errorMessage = "Please fill in all fields."
             return
         }
 
-        errorMessage = nil
-        navigateToHome = true
-    }
-}
+        let savedUsers = UserDefaults.standard.array(forKey: "parentUsers") as? [[String: String]] ?? []
 
-struct LoginParents_Previews: PreviewProvider {
-    static var previews: some View {
-        LoginParents()
+        if let matchedUser = savedUsers.first(where: { $0["email"] == email && $0["password"] == password }) {
+            // Successful login
+            errorMessage = nil
+            appState.isLoggedIn = true
+            navigateToHome = true
+        } else {
+            errorMessage = "Invalid email or password."
+        }
     }
 }
 

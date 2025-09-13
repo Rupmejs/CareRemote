@@ -167,14 +167,14 @@ struct ContentView: View {
     @State private var showingActionSheet = false
     @State private var scrollOffset: CGFloat = 0
     @State private var showSplash = true
-    @State private var showLabels = true // Controls both icons & labels
-    @State private var showIconLabels = true // NEW: Controls fade of text next to icons
-
+    @State private var showLabels = true
+    @State private var showIconLabels = true
     private let sidePadding: CGFloat = 20
     private let widgetSpacing: CGFloat = 15
     private let mapHeight: CGFloat = 200
     private let backgroundColor = Color(red: 0.96, green: 0.95, blue: 0.90)
     @State private var selectedTab = 1
+    @EnvironmentObject var appState: AppState
 
     init() {
         _extraWidgets = State(initialValue: loadWidgets())
@@ -212,10 +212,8 @@ struct ContentView: View {
                         DispatchQueue.main.async {
                             let offset = geo.frame(in: .global).minY
                             if offset >= 0 {
-                                // At top, show everything
                                 withAnimation(.easeIn) { showLabels = true }
                             } else {
-                                // Scrolled down, hide everything
                                 withAnimation(.easeOut) { showLabels = false }
                             }
                             scrollOffset = offset
@@ -311,7 +309,8 @@ struct ContentView: View {
 
                     Spacer()
 
-                    NavigationLink(destination: Text("Settings View")) {
+                    // Updated NavigationLink to open SettingsView
+                    NavigationLink(destination: SettingsView().environmentObject(appState)) {
                         HStack(spacing: 5) {
                             if showIconLabels {
                                 Text("Settings")
@@ -386,6 +385,7 @@ struct ContentView: View {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
+            .environmentObject(AppState())
     }
 }
 
