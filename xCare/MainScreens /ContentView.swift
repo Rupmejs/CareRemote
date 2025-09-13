@@ -113,29 +113,25 @@ struct WidgetView: View {
 // MARK: - SplashView
 struct SplashView: View {
     @Binding var isActive: Bool
-    @State private var textShown = "" // The text being typed
+    @State private var textShown = ""
     private let fullText = "xCare"
     @State private var scale: CGFloat = 1.2
     @State private var opacity: Double = 0
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.5).ignoresSafeArea() // Transparent overlay
+            Color.black.opacity(0.5).ignoresSafeArea()
             Text(textShown)
                 .font(.system(size: 50, weight: .bold, design: .rounded))
-                .foregroundColor(Color(red: 0.4, green: 0.8, blue: 1.0)) // Light blue
+                .foregroundColor(Color(red: 0.4, green: 0.8, blue: 1.0))
                 .tracking(6)
                 .scaleEffect(scale)
                 .opacity(opacity)
                 .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
-                .onAppear {
-                    animateText()
-                }
+                .onAppear { animateText() }
         }
         .onTapGesture {
-            withAnimation(.easeOut(duration: 0.3)) {
-                isActive = false
-            }
+            withAnimation(.easeOut(duration: 0.3)) { isActive = false }
         }
         .transition(.opacity)
     }
@@ -148,21 +144,12 @@ struct SplashView: View {
         for (index, char) in fullText.enumerated() {
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.2) {
                 textShown.append(char)
-                withAnimation(.easeIn(duration: 0.2)) {
-                    scale = 1.0
-                    opacity = 1.0
-                }
+                withAnimation(.easeIn(duration: 0.2)) { scale = 1.0; opacity = 1.0 }
 
                 if textShown.count == fullText.count {
-                    // Small bounce then fade out
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        withAnimation(.easeInOut(duration: 0.5)) {
-                            scale = 1.5
-                            opacity = 0
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            isActive = false
-                        }
+                        withAnimation(.easeInOut(duration: 0.5)) { scale = 1.5; opacity = 0 }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { isActive = false }
                     }
                 }
             }
@@ -179,14 +166,15 @@ struct ContentView: View {
     }
     @State private var showingActionSheet = false
     @State private var scrollOffset: CGFloat = 0
-    @State private var showSplash = true // Splash flag
+    @State private var showSplash = true
+    @State private var showLabels = true // Controls both icons & labels
+    @State private var showIconLabels = true // NEW: Controls fade of text next to icons
 
     private let sidePadding: CGFloat = 20
     private let widgetSpacing: CGFloat = 15
     private let mapHeight: CGFloat = 200
     private let backgroundColor = Color(red: 0.96, green: 0.95, blue: 0.90)
-
-    @State private var selectedTab = 1 // Start on mainContentView
+    @State private var selectedTab = 1
 
     init() {
         _extraWidgets = State(initialValue: loadWidgets())
@@ -194,13 +182,11 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            // Main app content with blur when splash is active
             NavigationView {
                 TabView(selection: $selectedTab) {
-                    NewView() // Tab 0
+                    NewView() // Replace with your actual NewView.swift
                         .tag(0)
-
-                    mainContentView // Tab 1
+                    mainContentView
                         .tag(1)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
@@ -212,21 +198,27 @@ struct ContentView: View {
             .blur(radius: showSplash ? 10 : 0)
             .animation(.easeInOut(duration: 0.3), value: showSplash)
 
-            // Splash overlay
             if showSplash {
-                SplashView(isActive: $showSplash)
-                    .zIndex(1)
+                SplashView(isActive: $showSplash).zIndex(1)
             }
         }
     }
-    
+
     var mainContentView: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack(alignment: .top) {
             ScrollView {
                 VStack(spacing: 20) {
                     GeometryReader { geo -> Color in
                         DispatchQueue.main.async {
-                            scrollOffset = geo.frame(in: .global).minY
+                            let offset = geo.frame(in: .global).minY
+                            if offset >= 0 {
+                                // At top, show everything
+                                withAnimation(.easeIn) { showLabels = true }
+                            } else {
+                                // Scrolled down, hide everything
+                                withAnimation(.easeOut) { showLabels = false }
+                            }
+                            scrollOffset = offset
                         }
                         return Color.clear
                     }
@@ -240,14 +232,12 @@ struct ContentView: View {
                             .shadow(radius: 6)
 
                         VStack(spacing: widgetSpacing) {
-                            // Map
                             UserTrackingMapView(userLocation: $userLocation)
                                 .frame(height: mapHeight)
                                 .cornerRadius(12)
                                 .shadow(color: .gray.opacity(0.4), radius: 5, x: 0, y: 2)
                                 .frame(maxWidth: .infinity)
 
-                            // Reminders + Calendar row
                             HStack(spacing: widgetSpacing) {
                                 WidgetView(widget: WidgetModel(title: "Reminders", items: ["Buy groceries", "Call Alice"], size: .small))
                                     .frame(maxWidth: .infinity)
@@ -255,23 +245,19 @@ struct ContentView: View {
                                     .frame(maxWidth: .infinity)
                             }
 
-                            // Extra widgets
                             VStack(spacing: widgetSpacing) {
                                 ForEach(0..<extraWidgets.count, id: \.self) { i in
                                     let widget = extraWidgets[i]
-
                                     if widget.size == .large {
                                         WidgetView(widget: widget)
                                             .frame(maxWidth: .infinity)
-                                            .contextMenu {
-                                                Button("Delete") { deleteWidget(widget) }
-                                            }
+                                            .contextMenu { Button("Delete") { deleteWidget(widget) } }
                                     } else {
                                         if i + 1 < extraWidgets.count, extraWidgets[i + 1].size == .small {
                                             HStack(spacing: widgetSpacing) {
                                                 WidgetView(widget: widget)
                                                     .frame(maxWidth: .infinity)
-                                                    .contextMenu { Button("Delete") { deleteWidget(widget) } }
+                                                    .contextMenu { Button("Delete") { deleteWidget(extraWidgets[i]) } }
                                                 WidgetView(widget: extraWidgets[i + 1])
                                                     .frame(maxWidth: .infinity)
                                                     .contextMenu { Button("Delete") { deleteWidget(extraWidgets[i + 1]) } }
@@ -297,21 +283,67 @@ struct ContentView: View {
                 }
                 .padding(.vertical, 20)
             }
-            .background(backgroundColor.ignoresSafeArea())
 
-            // Settings button
-            NavigationLink(destination: Text("Settings View")) {
-                Image(systemName: "gear")
-                    .font(.title)
-                    .foregroundColor(.blue)
-                    .padding()
-                    .background(Color.white.opacity(0.8))
-                    .clipShape(Circle())
-                    .shadow(radius: 3)
+            // Top icons with labels and fade-out after 2 seconds
+            if showLabels {
+                HStack {
+                    NavigationLink(destination: Text("Subscription View")) {
+                        HStack(spacing: 5) {
+                            Image(systemName: "face.smiling")
+                                .font(.title)
+                                .foregroundColor(.pink)
+                                .padding()
+                                .background(Color.white.opacity(0.8))
+                                .clipShape(Circle())
+                                .shadow(radius: 3)
+                            if showIconLabels {
+                                Text("Subscription")
+                                    .font(.caption2)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.pink.opacity(0.8))
+                                    .clipShape(Capsule())
+                                    .transition(.opacity)
+                            }
+                        }
+                    }
+
+                    Spacer()
+
+                    NavigationLink(destination: Text("Settings View")) {
+                        HStack(spacing: 5) {
+                            if showIconLabels {
+                                Text("Settings")
+                                    .font(.caption2)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.blue.opacity(0.8))
+                                    .clipShape(Capsule())
+                                    .transition(.opacity)
+                            }
+                            Image(systemName: "gear")
+                                .font(.title)
+                                .foregroundColor(.blue)
+                                .padding()
+                                .background(Color.white.opacity(0.8))
+                                .clipShape(Circle())
+                                .shadow(radius: 3)
+                        }
+                    }
+                }
+                .padding()
+                .transition(.opacity)
+                .onAppear {
+                    showIconLabels = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        withAnimation(.easeOut(duration: 0.5)) {
+                            showIconLabels = false
+                        }
+                    }
+                }
             }
-            .padding()
-            .opacity(scrollOffset >= -10 ? 1 : 0)
-            .animation(.easeInOut, value: scrollOffset)
         }
         .actionSheet(isPresented: $showingActionSheet) {
             ActionSheet(title: Text("Add Widget"), message: Text("Select widget size"), buttons: [
