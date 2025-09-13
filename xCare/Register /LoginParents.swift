@@ -5,6 +5,7 @@ struct LoginParents: View {
     @State private var password: String = ""
     @State private var showPassword: Bool = false
     @State private var navigateToHome = false
+    @State private var navigateToProfileEditor = false
     @State private var errorMessage: String?
 
     @EnvironmentObject var appState: AppState
@@ -102,6 +103,17 @@ struct LoginParents: View {
                 NavigationLink(destination: HomeView().environmentObject(appState), isActive: $navigateToHome) {
                     EmptyView()
                 }
+
+                // Navigate to Profile Editor
+                NavigationLink(destination: ProfileEditorView(userType: "parent") { saved in
+                    if let encoded = try? JSONEncoder().encode(saved) {
+                        UserDefaults.standard.set(encoded, forKey: "parent_profile")
+                    }
+                    navigateToProfileEditor = false
+                    navigateToHome = true
+                }, isActive: $navigateToProfileEditor) {
+                    EmptyView()
+                }
             }
             .navigationBarTitle("", displayMode: .inline)
         }
@@ -115,11 +127,17 @@ struct LoginParents: View {
 
         let savedUsers = UserDefaults.standard.array(forKey: "parentUsers") as? [[String: String]] ?? []
 
-        if let matchedUser = savedUsers.first(where: { $0["email"] == email && $0["password"] == password }) {
+        if let _ = savedUsers.first(where: { $0["email"] == email && $0["password"] == password }) {
             // Successful login
             errorMessage = nil
-            appState.isLoggedIn = true
-            navigateToHome = true
+            appState.logIn(userType: "parent")
+
+            // Check if profile exists
+            if UserDefaults.standard.data(forKey: "parent_profile") == nil {
+                navigateToProfileEditor = true
+            } else {
+                navigateToHome = true
+            }
         } else {
             errorMessage = "Invalid email or password."
         }

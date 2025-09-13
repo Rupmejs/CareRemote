@@ -4,6 +4,7 @@ struct ProfileEditorView: View {
     @Environment(\.presentationMode) var presentationMode
 
     @State private var name: String = ""
+    @State private var age: String = ""
     @State private var descriptionText: String = ""
     @State private var uiImages: [UIImage] = []
     @State private var showingPicker = false
@@ -16,31 +17,40 @@ struct ProfileEditorView: View {
         NavigationStack {
             ZStack {
                 Color(red: 0.96, green: 0.95, blue: 0.90).ignoresSafeArea()
-                ScrollView {
-                    VStack(spacing: 20) {
-                        Text("Create your profile")
-                            .font(.system(size: 28, weight: .bold))
-                            .foregroundColor(Color(red: 0.3, green: 0.6, blue: 1.0))
-                            .padding(.top, 24)
 
-                        // Add Photo
+                ScrollView {
+                    VStack(spacing: 24) {
+                        Text("Create Your Profile")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .foregroundColor(Color(red: 0.3, green: 0.6, blue: 1.0))
+                            .padding(.top, 40)
+
+                        // Photos
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 12) {
-                                ForEach(Array(uiImages.enumerated()), id: \.offset) { idx, img in
+                                ForEach(Array(uiImages.enumerated()), id: \.offset) { _, img in
                                     Image(uiImage: img)
                                         .resizable()
                                         .scaledToFill()
-                                        .frame(width: 140, height: 140)
+                                        .frame(width: 120, height: 120)
                                         .clipped()
                                         .cornerRadius(12)
                                 }
-                                Button("Add Photos") {
-                                    showingPicker = true
+
+                                Button(action: { showingPicker = true }) {
+                                    VStack {
+                                        Image(systemName: "plus.circle.fill")
+                                            .font(.system(size: 36))
+                                            .foregroundColor(.blue)
+                                        Text("Add Photos")
+                                            .font(.caption)
+                                            .foregroundColor(.gray)
+                                    }
+                                    .frame(width: 120, height: 120)
+                                    .background(Color.white)
+                                    .cornerRadius(12)
+                                    .shadow(radius: 2)
                                 }
-                                .frame(width: 140, height: 140)
-                                .background(Color.white)
-                                .cornerRadius(12)
-                                .shadow(radius: 2)
                             }
                             .padding(.horizontal)
                         }
@@ -49,7 +59,16 @@ struct ProfileEditorView: View {
                         TextField("Full name", text: $name)
                             .padding()
                             .background(Color.white)
-                            .cornerRadius(10)
+                            .cornerRadius(12)
+                            .foregroundColor(.black)
+                            .padding(.horizontal)
+
+                        // Age
+                        TextField("Age", text: $age)
+                            .keyboardType(.numberPad)
+                            .padding()
+                            .background(Color.white)
+                            .cornerRadius(12)
                             .foregroundColor(.black)
                             .padding(.horizontal)
 
@@ -58,26 +77,30 @@ struct ProfileEditorView: View {
                             .frame(height: 140)
                             .padding()
                             .background(Color.white)
-                            .cornerRadius(10)
+                            .cornerRadius(12)
                             .foregroundColor(.black)
                             .padding(.horizontal)
 
                         if let error = errorMessage {
                             Text(error)
                                 .foregroundColor(.red)
+                                .font(.subheadline)
                                 .padding(.horizontal)
                         }
 
                         Button(action: saveProfile) {
                             Text("Save & Continue")
+                                .font(.system(size: 22, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(Color.blue)
-                                .cornerRadius(12)
-                                .padding(.horizontal)
+                                .background(Color.blue.opacity(0.85))
+                                .cornerRadius(16)
+                                .shadow(color: .gray.opacity(0.4), radius: 6, x: 0, y: 4)
+                                .padding(.horizontal, 24)
                         }
                     }
+                    .padding(.bottom, 40)
                 }
             }
             .sheet(isPresented: $showingPicker) {
@@ -93,6 +116,14 @@ struct ProfileEditorView: View {
             errorMessage = "Please add at least one photo."
             return
         }
+        guard let ageInt = Int(age), ageInt > 0 else {
+            errorMessage = "Please enter a valid age."
+            return
+        }
+        guard !name.isEmpty else {
+            errorMessage = "Please enter your name."
+            return
+        }
         guard !descriptionText.isEmpty else {
             errorMessage = "Please add a description."
             return
@@ -106,7 +137,13 @@ struct ProfileEditorView: View {
             }
         }
 
-        let profile = UserProfile(userType: userType, name: name, description: descriptionText, imageFileNames: filenames)
+        let profile = UserProfile(
+            userType: userType,
+            name: name,
+            age: ageInt,
+            description: descriptionText,
+            imageFileNames: filenames
+        )
 
         if let encoded = try? JSONEncoder().encode(profile) {
             UserDefaults.standard.set(encoded, forKey: "\(userType)_profile")

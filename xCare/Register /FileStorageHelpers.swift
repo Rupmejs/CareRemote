@@ -1,4 +1,4 @@
-import UIKit
+import SwiftUI
 
 struct FileStorageHelpers {
     static func saveImageToDocuments(_ image: UIImage) -> String? {
