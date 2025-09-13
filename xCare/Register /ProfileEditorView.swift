@@ -11,76 +11,101 @@ struct ProfileEditorView: View {
     @State private var errorMessage: String?
 
     let userType: String
+    let email: String
     let onSaved: (UserProfile) -> Void
 
     var body: some View {
         NavigationStack {
             ZStack {
+                // Beige background fills entire view
                 Color(red: 0.96, green: 0.95, blue: 0.90).ignoresSafeArea()
 
                 ScrollView {
-                    VStack(spacing: 24) {
+                    VStack(spacing: 28) {
+                        // Title
                         Text("Create Your Profile")
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .font(.system(size: 34, weight: .bold, design: .rounded))
                             .foregroundColor(Color(red: 0.3, green: 0.6, blue: 1.0))
                             .padding(.top, 40)
 
-                        // Photos
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
-                                ForEach(Array(uiImages.enumerated()), id: \.offset) { _, img in
-                                    Image(uiImage: img)
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(width: 120, height: 120)
-                                        .clipped()
-                                        .cornerRadius(12)
-                                }
+                        // Photos Section
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Photos")
+                                .font(.headline)
+                                .foregroundColor(.black)
+                                .padding(.horizontal)
 
-                                Button(action: { showingPicker = true }) {
-                                    VStack {
-                                        Image(systemName: "plus.circle.fill")
-                                            .font(.system(size: 36))
-                                            .foregroundColor(.blue)
-                                        Text("Add Photos")
-                                            .font(.caption)
-                                            .foregroundColor(.gray)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 15) {
+                                    ForEach(Array(uiImages.enumerated()), id: \.offset) { _, img in
+                                        Image(uiImage: img)
+                                            .resizable()
+                                            .scaledToFill()
+                                            .frame(width: 120, height: 120)
+                                            .clipped()
+                                            .cornerRadius(14)
+                                            .shadow(color: .gray.opacity(0.3), radius: 4, x: 0, y: 2)
                                     }
-                                    .frame(width: 120, height: 120)
-                                    .background(Color.white)
-                                    .cornerRadius(12)
-                                    .shadow(radius: 2)
+
+                                    Button(action: { showingPicker = true }) {
+                                        VStack {
+                                            Image(systemName: "plus.circle.fill")
+                                                .font(.system(size: 40))
+                                                .foregroundColor(.blue)
+                                            Text("Add")
+                                                .font(.caption)
+                                                .foregroundColor(.gray)
+                                        }
+                                        .frame(width: 120, height: 120)
+                                        .background(Color.white)
+                                        .cornerRadius(14)
+                                        .shadow(color: .gray.opacity(0.3), radius: 4, x: 0, y: 2)
+                                    }
                                 }
+                                .padding(.horizontal)
                             }
-                            .padding(.horizontal)
                         }
 
-                        // Name
-                        TextField("Full name", text: $name)
-                            .padding()
-                            .background(Color.white)
-                            .cornerRadius(12)
-                            .foregroundColor(.black)
-                            .padding(.horizontal)
+                        // Info Section
+                        VStack(spacing: 16) {
+                            // Name
+                            TextField("", text: $name, prompt: Text("Full Name").foregroundColor(.black.opacity(0.6)))
+                                .padding()
+                                .background(Color.white)
+                                .cornerRadius(12)
+                                .foregroundColor(.black)
+                                .shadow(color: .gray.opacity(0.2), radius: 3, x: 0, y: 2)
 
-                        // Age
-                        TextField("Age", text: $age)
-                            .keyboardType(.numberPad)
-                            .padding()
-                            .background(Color.white)
-                            .cornerRadius(12)
-                            .foregroundColor(.black)
-                            .padding(.horizontal)
+                            // Age
+                            TextField("", text: $age, prompt: Text("Age").foregroundColor(.black.opacity(0.6)))
+                                .keyboardType(.numberPad)
+                                .padding()
+                                .background(Color.white)
+                                .cornerRadius(12)
+                                .foregroundColor(.black)
+                                .shadow(color: .gray.opacity(0.2), radius: 3, x: 0, y: 2)
 
-                        // Description
-                        TextEditor(text: $descriptionText)
-                            .frame(height: 140)
-                            .padding()
-                            .background(Color.white)
-                            .cornerRadius(12)
-                            .foregroundColor(.black)
-                            .padding(.horizontal)
+                            // Description
+                            ZStack(alignment: .topLeading) {
+                                TextEditor(text: $descriptionText)
+                                    .frame(height: 140)
+                                    .padding(10)
+                                    .background(Color.white)
+                                    .cornerRadius(12)
+                                    .foregroundColor(.black)
+                                    .shadow(color: .gray.opacity(0.2), radius: 3, x: 0, y: 2)
 
+                                if descriptionText.isEmpty {
+                                    Text("Description")
+                                        .foregroundColor(.black.opacity(0.5))
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 14)
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
+
+                        // Error
                         if let error = errorMessage {
                             Text(error)
                                 .foregroundColor(.red)
@@ -88,19 +113,21 @@ struct ProfileEditorView: View {
                                 .padding(.horizontal)
                         }
 
+                        // Save Button
                         Button(action: saveProfile) {
                             Text("Save & Continue")
                                 .font(.system(size: 22, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(Color.blue.opacity(0.85))
+                                .background(Color(red: 0.3, green: 0.6, blue: 1.0))
                                 .cornerRadius(16)
                                 .shadow(color: .gray.opacity(0.4), radius: 6, x: 0, y: 4)
                                 .padding(.horizontal, 24)
                         }
+                        .padding(.top, 10)
                     }
-                    .padding(.bottom, 40)
+                    .padding(.bottom, 50)
                 }
             }
             .sheet(isPresented: $showingPicker) {
@@ -139,6 +166,7 @@ struct ProfileEditorView: View {
 
         let profile = UserProfile(
             userType: userType,
+            email: email,
             name: name,
             age: ageInt,
             description: descriptionText,

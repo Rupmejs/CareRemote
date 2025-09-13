@@ -3,10 +3,11 @@ import SwiftUI
 struct HomeView: View {
     @State private var dragOffset: CGSize = .zero
     @State private var loggedInUserType: String = UserDefaults.standard.string(forKey: "loggedInUserType") ?? "nanny"
+    @State private var loggedInEmail: String = UserDefaults.standard.string(forKey: "loggedInEmail") ?? ""
     @State private var userProfile: UserProfile?
     @State private var showProfileEditor = false
     @State private var profileIncomplete = false
-    @State private var cachedImage: UIImage? // cache first image
+    @State private var cachedImage: UIImage?
 
     var body: some View {
         NavigationStack {
@@ -14,7 +15,6 @@ struct HomeView: View {
                 Color(red: 0.96, green: 0.95, blue: 0.90).ignoresSafeArea()
 
                 VStack(spacing: 20) {
-                    // Title
                     Text("xCare")
                         .font(.system(size: 42, weight: .bold, design: .rounded))
                         .foregroundColor(.blue)
@@ -38,13 +38,17 @@ struct HomeView: View {
             .navigationBarBackButtonHidden(true)
             .navigationBarTitleDisplayMode(.inline)
             .fullScreenCover(isPresented: $showProfileEditor) {
-                ProfileEditorView(userType: loggedInUserType) { saved in
-                    if let encoded = try? JSONEncoder().encode(saved) {
-                        UserDefaults.standard.set(encoded, forKey: "\(loggedInUserType)_profile")
+                if !loggedInEmail.isEmpty {
+                    ProfileEditorView(userType: loggedInUserType, email: loggedInEmail) { saved in
+                        if let encoded = try? JSONEncoder().encode(saved) {
+                            UserDefaults.standard.set(encoded, forKey: "\(loggedInUserType)_profile")
+                        }
+                        userProfile = saved
+                        loadCachedImage(for: saved)
+                        profileIncomplete = false
                     }
-                    userProfile = saved
-                    loadCachedImage(for: saved)
-                    profileIncomplete = false
+                } else {
+                    Text("Error: No logged-in email found")
                 }
             }
             .onAppear { checkProfile() }
@@ -102,7 +106,7 @@ struct HomeView: View {
                 Spacer()
                 HStack {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(profile.name)
+                        Text("\(profile.name), \(profile.age)")
                             .font(.title.bold())
                             .foregroundColor(.white)
                             .shadow(radius: 2)
@@ -130,14 +134,8 @@ struct HomeView: View {
         .gesture(
             DragGesture()
                 .onChanged { dragOffset = $0.translation }
-                .onEnded { value in
-                    withAnimation(.spring()) {
-                        if value.translation.width > 120 || value.translation.width < -120 {
-                            dragOffset = .zero // here you could trigger next profile
-                        } else {
-                            dragOffset = .zero
-                        }
-                    }
+                .onEnded { _ in
+                    withAnimation(.spring()) { dragOffset = .zero }
                 }
         )
         .padding(.horizontal, 20)
@@ -146,8 +144,17 @@ struct HomeView: View {
     // MARK: - Helpers
 
     private func checkProfile() {
+        guard !loggedInEmail.isEmpty else {
+            profileIncomplete = true
+            return
+        }
+
         if let data = UserDefaults.standard.data(forKey: "\(loggedInUserType)_profile"),
-           let decoded = try? JSONDecoder().decode(UserProfile.self, from: data) {
+           let decoded = try? JSONDecoder().decode(UserProfile.self, from: data),
+           decoded.email == loggedInEmail,           // ✅ profile must match account
+           !decoded.name.isEmpty,
+           decoded.age > 0,
+           !decoded.imageFileNames.isEmpty {
             userProfile = decoded
             loadCachedImage(for: decoded)
             profileIncomplete = false
