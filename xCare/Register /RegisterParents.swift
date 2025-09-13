@@ -5,9 +5,12 @@ struct RegisterParents: View {
     @State private var email: String = ""
     @State private var password: String = ""
     @State private var confirmPassword: String = ""
+    @State private var showPassword: Bool = false
+    @State private var navigateToLogin = false
+    @State private var errorMessage: String?
 
     var body: some View {
-        NavigationView { // Must wrap everything in NavigationView
+        NavigationView {
             ZStack {
                 Color(red: 0.96, green: 0.95, blue: 0.90).ignoresSafeArea()
 
@@ -24,45 +27,75 @@ struct RegisterParents: View {
                             .font(.system(size: 16))
 
                         VStack(spacing: 20) {
+                            // Username
                             TextField("", text: $username, prompt: Text("Username").foregroundColor(.black.opacity(0.7)))
+                                .foregroundColor(.black)
                                 .padding()
                                 .background(Color.gray.opacity(0.2))
                                 .cornerRadius(12)
 
+                            // Email
                             TextField("", text: $email, prompt: Text("Email").foregroundColor(.black.opacity(0.7)))
                                 .keyboardType(.emailAddress)
                                 .autocapitalization(.none)
+                                .foregroundColor(.black)
                                 .padding()
                                 .background(Color.gray.opacity(0.2))
                                 .cornerRadius(12)
 
-                            SecureField("", text: $password, prompt: Text("Password").foregroundColor(.black.opacity(0.7)))
-                                .padding()
-                                .background(Color.gray.opacity(0.2))
-                                .cornerRadius(12)
+                            // Password with show/hide
+                            ZStack(alignment: .trailing) {
+                                if showPassword {
+                                    TextField("", text: $password, prompt: Text("Password").foregroundColor(.black.opacity(0.7)))
+                                        .foregroundColor(.black)
+                                        .padding()
+                                        .background(Color.gray.opacity(0.2))
+                                        .cornerRadius(12)
+                                } else {
+                                    SecureField("", text: $password, prompt: Text("Password").foregroundColor(.black.opacity(0.7)))
+                                        .foregroundColor(.black)
+                                        .padding()
+                                        .background(Color.gray.opacity(0.2))
+                                        .cornerRadius(12)
+                                }
 
+                                Button(action: { showPassword.toggle() }) {
+                                    Image(systemName: showPassword ? "eye.slash.fill" : "eye.fill")
+                                        .foregroundColor(.gray)
+                                        .padding(.trailing, 12)
+                                }
+                            }
+
+                            // Confirm Password (no eye)
                             SecureField("", text: $confirmPassword, prompt: Text("Confirm Password").foregroundColor(.black.opacity(0.7)))
+                                .foregroundColor(.black)
                                 .padding()
                                 .background(Color.gray.opacity(0.2))
                                 .cornerRadius(12)
 
-                            Button(action: {
-                                print("Sign Up tapped")
-                            }) {
+                            // Error
+                            if let error = errorMessage {
+                                Text(error)
+                                    .foregroundColor(.red)
+                                    .font(.subheadline)
+                            }
+
+                            // Sign Up Button
+                            Button(action: { signUp() }) {
                                 Text("Sign Up")
                                     .foregroundColor(.white)
-                                    .font(.headline)
                                     .frame(maxWidth: .infinity)
                                     .padding()
                                     .background(Color(red: 0.3, green: 0.6, blue: 1.0))
                                     .cornerRadius(12)
                             }
+                            .padding(.top, 10)
 
-                            // NavigationLink must be directly inside VStack or HStack
+                            // Navigate to login
                             HStack {
                                 Text("Already have an account?")
                                     .foregroundColor(.black)
-                                NavigationLink(destination: LoginParents()) {
+                                NavigationLink(destination: LoginParents(), isActive: $navigateToLogin) {
                                     Text("Log In")
                                         .foregroundColor(Color(red: 0.3, green: 0.6, blue: 1.0))
                                         .bold()
@@ -84,11 +117,26 @@ struct RegisterParents: View {
             .navigationBarTitle("", displayMode: .inline)
         }
     }
-}
 
-struct RegisterParents_Previews: PreviewProvider {
-    static var previews: some View {
-        RegisterParents()
+    private func signUp() {
+        guard !username.isEmpty, !email.isEmpty, !password.isEmpty, !confirmPassword.isEmpty else {
+            errorMessage = "Please fill in all fields."
+            return
+        }
+        guard password == confirmPassword else {
+            errorMessage = "Passwords do not match."
+            return
+        }
+
+        let parentCredentials: [String: String] = [
+            "username": username,
+            "email": email,
+            "password": password
+        ]
+        UserDefaults.standard.set(parentCredentials, forKey: "parentUser")
+
+        errorMessage = nil
+        navigateToLogin = true
     }
 }
 
