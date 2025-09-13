@@ -2,75 +2,55 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var appState: AppState
-    @Environment(\.presentationMode) var presentationMode
-    @State private var showLogoutAlert = false
 
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(red: 0.96, green: 0.95, blue: 0.90)
-                    .ignoresSafeArea()
+                Color(red: 0.96, green: 0.95, blue: 0.90).ignoresSafeArea()
 
-                VStack(spacing: 30) {
+                VStack(spacing: 40) {
+                    // Title
                     Text("Settings")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundColor(Color(red: 0.3, green: 0.6, blue: 1.0))
-                        .padding(.top, 40)
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.blue)
 
                     Spacer()
 
                     // Logout Button
                     Button(action: {
-                        showLogoutAlert = true
+                        appState.logOut()
                     }) {
                         HStack {
-                            Image(systemName: "arrow.right.square")
+                            Image(systemName: "arrow.backward.square")
+                                .foregroundColor(.white)
                                 .font(.title2)
                             Text("Log Out")
-                                .font(.headline)
+                                .foregroundColor(.white)
+                                .bold()
+                                .font(.title2)
                         }
-                        .foregroundColor(.white)
-                        .padding()
                         .frame(maxWidth: .infinity)
+                        .padding()
                         .background(Color.red)
-                        .cornerRadius(12)
-                        .shadow(radius: 5)
-                        .padding(.horizontal, 20)
+                        .cornerRadius(16)
+                        .shadow(color: .gray.opacity(0.5), radius: 5, x: 0, y: 4)
                     }
-                    .alert(isPresented: $showLogoutAlert) {
-                        Alert(
-                            title: Text("Log Out"),
-                            message: Text("Are you sure you want to log out?"),
-                            primaryButton: .destructive(Text("Log Out")) {
-                                logout()
-                            },
-                            secondaryButton: .cancel()
-                        )
-                    }
+                    .padding(.horizontal, 30)
 
                     Spacer()
                 }
+                .padding(.top, 60)
             }
-            .navigationBarTitle("", displayMode: .inline)
+            .navigationBarTitleDisplayMode(.inline)
         }
-    }
-
-    private func logout() {
-        // 1. Set appState to logged out
-        appState.isLoggedIn = false
-
-        // 2. Clear saved credentials (optional)
-        UserDefaults.standard.removeObject(forKey: "parentUser")
-        UserDefaults.standard.removeObject(forKey: "nannyUser")
-
-        // 3. Dismiss SettingsView
-        presentationMode.wrappedValue.dismiss()
     }
 }
 
+// MARK: - Preview
 struct SettingsView_Previews: PreviewProvider {
     static var previews: some View {
-        SettingsView().environmentObject(AppState())
+        SettingsView()
+            .environmentObject(AppState())
     }
 }
 

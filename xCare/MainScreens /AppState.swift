@@ -4,7 +4,6 @@ class AppState: ObservableObject {
     @Published var isLoggedIn: Bool
 
     init() {
-        // Check if already logged in
         self.isLoggedIn = UserDefaults.standard.bool(forKey: "isLoggedIn")
     }
 
@@ -18,6 +17,13 @@ class AppState: ObservableObject {
         UserDefaults.standard.set(false, forKey: "isLoggedIn")
         UserDefaults.standard.removeObject(forKey: "loggedInUserType")
         self.isLoggedIn = false
+
+        // Reset the root view to ContentView
+        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = scene.windows.first {
+            window.rootViewController = UIHostingController(rootView: ContentView().environmentObject(self))
+            window.makeKeyAndVisible()
+        }
     }
 }
 
