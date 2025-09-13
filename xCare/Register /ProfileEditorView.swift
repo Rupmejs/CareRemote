@@ -17,7 +17,7 @@ struct ProfileEditorView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Beige background fills entire view
+                // Beige background fills the entire screen
                 Color(red: 0.96, green: 0.95, blue: 0.90).ignoresSafeArea()
 
                 ScrollView {
@@ -93,6 +93,7 @@ struct ProfileEditorView: View {
                                     .background(Color.white)
                                     .cornerRadius(12)
                                     .foregroundColor(.black)
+                                    .scrollContentBackground(.hidden) // ✅ remove default bg
                                     .shadow(color: .gray.opacity(0.2), radius: 3, x: 0, y: 2)
 
                                 if descriptionText.isEmpty {
@@ -129,7 +130,9 @@ struct ProfileEditorView: View {
                     }
                     .padding(.bottom, 50)
                 }
+                .scrollContentBackground(.hidden) // ✅ beige stays visible
             }
+            .toolbar(.hidden, for: .navigationBar) // ✅ removes black bar at top
             .sheet(isPresented: $showingPicker) {
                 PhotoPicker(selectionLimit: 6) { images in
                     uiImages.append(contentsOf: images)
