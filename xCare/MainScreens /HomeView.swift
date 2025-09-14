@@ -4,10 +4,10 @@ struct HomeView: View {
     @State private var dragOffset: CGSize = .zero
     @State private var loggedInUserType: String = UserDefaults.standard.string(forKey: "loggedInUserType") ?? "nanny"
     @State private var loggedInEmail: String = UserDefaults.standard.string(forKey: "loggedInEmail") ?? ""
-    @State private var userProfile: UserProfile?
+    @State private var profiles: [UserProfile] = []   // ✅ all profiles
     @State private var showProfileEditor = false
     @State private var profileIncomplete = false
-    @State private var cachedImage: UIImage?
+    @State private var cachedImages: [UUID: UIImage] = [:] // cache images by profile id
 
     var body: some View {
         NavigationStack {
@@ -25,11 +25,16 @@ struct HomeView: View {
                     if profileIncomplete {
                         profileMissingView
                     } else {
-                        if let profile = userProfile {
-                            profileCard(profile)
-                        } else {
-                            Text("No profile found")
+                        if profiles.isEmpty {
+                            Text("No profiles to show")
                                 .foregroundColor(.gray)
+                        } else {
+                            ZStack {
+                                ForEach(profiles) { profile in
+                                    profileCard(profile)
+                                        .zIndex(profile.id == profiles.last?.id ? 1 : 0)
+                                }
+                            }
                         }
                         Spacer()
                     }
@@ -40,18 +45,15 @@ struct HomeView: View {
             .fullScreenCover(isPresented: $showProfileEditor) {
                 if !loggedInEmail.isEmpty {
                     ProfileEditorView(userType: loggedInUserType, email: loggedInEmail) { saved in
-                        if let encoded = try? JSONEncoder().encode(saved) {
-                            UserDefaults.standard.set(encoded, forKey: "\(loggedInUserType)_profile")
-                        }
-                        userProfile = saved
-                        loadCachedImage(for: saved)
+                        saveProfile(saved)
+                        loadProfiles()
                         profileIncomplete = false
                     }
                 } else {
                     Text("Error: No logged-in email found")
                 }
             }
-            .onAppear { checkProfile() }
+            .onAppear { loadProfiles() }
         }
     }
 
@@ -83,7 +85,7 @@ struct HomeView: View {
 
     private func profileCard(_ profile: UserProfile) -> some View {
         ZStack {
-            if let uiImage = cachedImage {
+            if let uiImage = cachedImages[profile.id] {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFill()
@@ -129,43 +131,66 @@ struct HomeView: View {
                 .cornerRadius(20)
             }
         }
-        .offset(x: dragOffset.width)
-        .rotationEffect(.degrees(Double(dragOffset.width / 25)))
+        .offset(x: profile.id == profiles.last?.id ? dragOffset.width : 0)
+        .rotationEffect(.degrees(profile.id == profiles.last?.id ? Double(dragOffset.width / 25) : 0))
         .gesture(
-            DragGesture()
+            profile.id == profiles.last?.id ? DragGesture()
                 .onChanged { dragOffset = $0.translation }
-                .onEnded { _ in
-                    withAnimation(.spring()) { dragOffset = .zero }
-                }
+                .onEnded { value in
+                    if abs(value.translation.width) > 120 {
+                        // swipe away top profile
+                        withAnimation(.spring()) {
+                            _ = profiles.popLast()
+                        }
+                    }
+                    dragOffset = .zero
+                } : nil
         )
         .padding(.horizontal, 20)
     }
 
     // MARK: - Helpers
 
-    private func checkProfile() {
+    private func saveProfile(_ profile: UserProfile) {
+        if let encoded = try? JSONEncoder().encode(profile) {
+            UserDefaults.standard.set(encoded, forKey: "\(profile.userType)_profile_\(profile.email)")
+        }
+    }
+
+    private func loadProfiles() {
         guard !loggedInEmail.isEmpty else {
             profileIncomplete = true
             return
         }
 
-        if let data = UserDefaults.standard.data(forKey: "\(loggedInUserType)_profile"),
-           let decoded = try? JSONDecoder().decode(UserProfile.self, from: data),
-           decoded.email == loggedInEmail,           // ✅ profile must match account
-           !decoded.name.isEmpty,
-           decoded.age > 0,
-           !decoded.imageFileNames.isEmpty {
-            userProfile = decoded
-            loadCachedImage(for: decoded)
-            profileIncomplete = false
-        } else {
-            profileIncomplete = true
-        }
-    }
+        var loaded: [UserProfile] = []
 
-    private func loadCachedImage(for profile: UserProfile) {
-        if let firstImage = profile.imageFileNames.first {
-            cachedImage = FileStorageHelpers.loadImageFromDocuments(filename: firstImage)
+        // load all nanny and parent profiles
+        let defaults = UserDefaults.standard
+        for key in defaults.dictionaryRepresentation().keys {
+            if key.hasPrefix("nanny_profile_") || key.hasPrefix("parent_profile_") {
+                if let data = defaults.data(forKey: key),
+                   let decoded = try? JSONDecoder().decode(UserProfile.self, from: data) {
+                    // exclude logged-in user
+                    if decoded.email != loggedInEmail {
+                        loaded.append(decoded)
+                    } else {
+                        // logged in user’s own profile
+                        profileIncomplete = false
+                    }
+                }
+            }
+        }
+
+        profiles = loaded.reversed() // last is top card
+
+        // cache first image for each profile
+        cachedImages.removeAll()
+        for profile in profiles {
+            if let firstImage = profile.imageFileNames.first,
+               let uiImage = FileStorageHelpers.loadImageFromDocuments(filename: firstImage) {
+                cachedImages[profile.id] = uiImage
+            }
         }
     }
 }

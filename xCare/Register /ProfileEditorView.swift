@@ -17,18 +17,16 @@ struct ProfileEditorView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Beige background fills the entire screen
                 Color(red: 0.96, green: 0.95, blue: 0.90).ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: 28) {
-                        // Title
                         Text("Create Your Profile")
                             .font(.system(size: 34, weight: .bold, design: .rounded))
                             .foregroundColor(Color(red: 0.3, green: 0.6, blue: 1.0))
                             .padding(.top, 40)
 
-                        // Photos Section
+                        // Photos
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Photos")
                                 .font(.headline)
@@ -68,24 +66,19 @@ struct ProfileEditorView: View {
 
                         // Info Section
                         VStack(spacing: 16) {
-                            // Name
                             TextField("", text: $name, prompt: Text("Full Name").foregroundColor(.black.opacity(0.6)))
                                 .padding()
                                 .background(Color.white)
                                 .cornerRadius(12)
                                 .foregroundColor(.black)
-                                .shadow(color: .gray.opacity(0.2), radius: 3, x: 0, y: 2)
 
-                            // Age
                             TextField("", text: $age, prompt: Text("Age").foregroundColor(.black.opacity(0.6)))
                                 .keyboardType(.numberPad)
                                 .padding()
                                 .background(Color.white)
                                 .cornerRadius(12)
                                 .foregroundColor(.black)
-                                .shadow(color: .gray.opacity(0.2), radius: 3, x: 0, y: 2)
 
-                            // Description
                             ZStack(alignment: .topLeading) {
                                 TextEditor(text: $descriptionText)
                                     .frame(height: 140)
@@ -93,8 +86,7 @@ struct ProfileEditorView: View {
                                     .background(Color.white)
                                     .cornerRadius(12)
                                     .foregroundColor(.black)
-                                    .scrollContentBackground(.hidden) // ✅ remove default bg
-                                    .shadow(color: .gray.opacity(0.2), radius: 3, x: 0, y: 2)
+                                    .scrollContentBackground(.hidden)
 
                                 if descriptionText.isEmpty {
                                     Text("Description")
@@ -106,7 +98,6 @@ struct ProfileEditorView: View {
                         }
                         .padding(.horizontal)
 
-                        // Error
                         if let error = errorMessage {
                             Text(error)
                                 .foregroundColor(.red)
@@ -114,7 +105,6 @@ struct ProfileEditorView: View {
                                 .padding(.horizontal)
                         }
 
-                        // Save Button
                         Button(action: saveProfile) {
                             Text("Save & Continue")
                                 .font(.system(size: 22, weight: .bold, design: .rounded))
@@ -130,9 +120,9 @@ struct ProfileEditorView: View {
                     }
                     .padding(.bottom, 50)
                 }
-                .scrollContentBackground(.hidden) // ✅ beige stays visible
+                .scrollContentBackground(.hidden)
             }
-            .toolbar(.hidden, for: .navigationBar) // ✅ removes black bar at top
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showingPicker) {
                 PhotoPicker(selectionLimit: 6) { images in
                     uiImages.append(contentsOf: images)
@@ -177,7 +167,7 @@ struct ProfileEditorView: View {
         )
 
         if let encoded = try? JSONEncoder().encode(profile) {
-            UserDefaults.standard.set(encoded, forKey: "\(userType)_profile")
+            UserDefaults.standard.set(encoded, forKey: "\(userType)_profile_\(email)")
         }
 
         onSaved(profile)

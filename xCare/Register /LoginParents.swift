@@ -27,7 +27,6 @@ struct LoginParents: View {
                         .font(.system(size: 16))
 
                     VStack(spacing: 20) {
-                        // Email
                         TextField("", text: $email, prompt: Text("Email").foregroundColor(.black.opacity(0.7)))
                             .keyboardType(.emailAddress)
                             .autocapitalization(.none)
@@ -36,7 +35,6 @@ struct LoginParents: View {
                             .cornerRadius(12)
                             .foregroundColor(.black)
 
-                        // Password with show/hide toggle
                         ZStack(alignment: .trailing) {
                             if showPassword {
                                 TextField("", text: $password, prompt: Text("Password").foregroundColor(.black.opacity(0.7)))
@@ -59,14 +57,12 @@ struct LoginParents: View {
                             }
                         }
 
-                        // Error message
                         if let error = errorMessage {
                             Text(error)
                                 .foregroundColor(.red)
                                 .font(.subheadline)
                         }
 
-                        // Log In button
                         Button(action: login) {
                             Text("Log In")
                                 .foregroundColor(.white)
@@ -76,7 +72,6 @@ struct LoginParents: View {
                                 .cornerRadius(12)
                         }
 
-                        // Sign Up link
                         HStack {
                             Text("Don't have an account?")
                                 .foregroundColor(.black)
@@ -96,8 +91,8 @@ struct LoginParents: View {
                     Spacer()
                 }
 
-                // Navigation links
                 NavigationLink(destination: HomeView().environmentObject(appState), isActive: $showHome) { EmptyView() }
+
                 NavigationLink(destination: ProfileEditorView(userType: "parent", email: email) { saved in
                     let profile = UserProfile(
                         userType: "parent",
@@ -108,7 +103,7 @@ struct LoginParents: View {
                         imageFileNames: saved.imageFileNames
                     )
                     if let encoded = try? JSONEncoder().encode(profile) {
-                        UserDefaults.standard.set(encoded, forKey: "parent_profile")
+                        UserDefaults.standard.set(encoded, forKey: "parent_profile_\(email)")
                     }
                     showProfileEditor = false
                     showHome = true
@@ -131,7 +126,7 @@ struct LoginParents: View {
             appState.logIn(userType: "parent")
             UserDefaults.standard.set(email, forKey: "loggedInEmail")
 
-            if let data = UserDefaults.standard.data(forKey: "parent_profile"),
+            if let data = UserDefaults.standard.data(forKey: "parent_profile_\(email)"),
                let decoded = try? JSONDecoder().decode(UserProfile.self, from: data),
                decoded.email == email,
                !decoded.name.isEmpty,
