@@ -93,21 +93,24 @@ struct LoginParents: View {
 
                 NavigationLink(destination: HomeView().environmentObject(appState), isActive: $showHome) { EmptyView() }
 
-                NavigationLink(destination: ProfileEditorView(userType: "parent", email: email) { saved in
-                    let profile = UserProfile(
-                        userType: "parent",
-                        email: email,
-                        name: saved.name,
-                        age: saved.age,
-                        description: saved.description,
-                        imageFileNames: saved.imageFileNames
-                    )
-                    if let encoded = try? JSONEncoder().encode(profile) {
-                        UserDefaults.standard.set(encoded, forKey: "parent_profile_\(email)")
-                    }
-                    showProfileEditor = false
-                    showHome = true
-                }, isActive: $showProfileEditor) { EmptyView() }
+                NavigationLink(
+                    destination: ProfileEditorView(userType: "parent", email: email, existingProfile: nil) { saved in
+                        let profile = UserProfile(
+                            userType: "parent",
+                            email: email,
+                            name: saved.name,
+                            age: saved.age,
+                            description: saved.description,
+                            imageFileNames: saved.imageFileNames
+                        )
+                        if let encoded = try? JSONEncoder().encode(profile) {
+                            UserDefaults.standard.set(encoded, forKey: "parent_profile_\(email)")
+                        }
+                        showProfileEditor = false
+                        showHome = true
+                    },
+                    isActive: $showProfileEditor
+                ) { EmptyView() }
             }
             .navigationBarTitle("", displayMode: .inline)
         }

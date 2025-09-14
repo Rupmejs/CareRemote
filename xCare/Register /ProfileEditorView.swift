@@ -12,6 +12,7 @@ struct ProfileEditorView: View {
 
     let userType: String
     let email: String
+    let existingProfile: UserProfile?   // ✅ new
     let onSaved: (UserProfile) -> Void
 
     var body: some View {
@@ -21,7 +22,7 @@ struct ProfileEditorView: View {
 
                 ScrollView {
                     VStack(spacing: 28) {
-                        Text("Create Your Profile")
+                        Text(existingProfile == nil ? "Create Your Profile" : "Edit Your Profile")
                             .font(.system(size: 34, weight: .bold, design: .rounded))
                             .foregroundColor(Color(red: 0.3, green: 0.6, blue: 1.0))
                             .padding(.top, 40)
@@ -123,10 +124,25 @@ struct ProfileEditorView: View {
                 .scrollContentBackground(.hidden)
             }
             .toolbar(.hidden, for: .navigationBar)
+            .onAppear { loadExistingProfile() }   // ✅ prefill fields
             .sheet(isPresented: $showingPicker) {
                 PhotoPicker(selectionLimit: 6) { images in
                     uiImages.append(contentsOf: images)
                 }
+            }
+        }
+    }
+
+    private func loadExistingProfile() {
+        guard let profile = existingProfile else { return }
+        name = profile.name
+        age = "\(profile.age)"
+        descriptionText = profile.description
+
+        uiImages.removeAll()
+        for filename in profile.imageFileNames {
+            if let img = FileStorageHelpers.loadImageFromDocuments(filename: filename) {
+                uiImages.append(img)
             }
         }
     }
@@ -149,7 +165,6 @@ struct ProfileEditorView: View {
             return
         }
 
-        // Save images
         var filenames: [String] = []
         for img in uiImages {
             if let saved = FileStorageHelpers.saveImageToDocuments(img) {
@@ -161,7 +176,7 @@ struct ProfileEditorView: View {
             userType: userType,
             email: email,
             name: name,
-            age: ageInt,
+            age: Int(age) ?? 0,
             description: descriptionText,
             imageFileNames: filenames
         )

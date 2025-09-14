@@ -4,14 +4,15 @@ struct HomeView: View {
     @State private var dragOffset: CGSize = .zero
     @State private var loggedInUserType: String = UserDefaults.standard.string(forKey: "loggedInUserType") ?? "nanny"
     @State private var loggedInEmail: String = UserDefaults.standard.string(forKey: "loggedInEmail") ?? ""
-    @State private var profiles: [UserProfile] = []   // ✅ all profiles
+    @State private var profiles: [UserProfile] = []
+    @State private var currentUserProfile: UserProfile?
     @State private var showProfileEditor = false
     @State private var profileIncomplete = false
-    @State private var cachedImages: [UUID: UIImage] = [:] // cache images by profile id
+    @State private var cachedImages: [UUID: UIImage] = [:]
 
     var body: some View {
         NavigationStack {
-            ZStack {
+            ZStack(alignment: .topTrailing) {
                 Color(red: 0.96, green: 0.95, blue: 0.90).ignoresSafeArea()
 
                 VStack(spacing: 20) {
@@ -39,12 +40,28 @@ struct HomeView: View {
                         Spacer()
                     }
                 }
+
+                Button(action: { showProfileEditor = true }) {
+                    Image(systemName: "person.crop.circle")
+                        .font(.system(size: 28))
+                        .foregroundColor(.blue)
+                        .padding()
+                        .background(Color.white.opacity(0.8))
+                        .clipShape(Circle())
+                        .shadow(radius: 3)
+                        .padding(.trailing, 16)
+                        .padding(.top, 60)
+                }
             }
             .navigationBarBackButtonHidden(true)
             .navigationBarTitleDisplayMode(.inline)
             .fullScreenCover(isPresented: $showProfileEditor) {
                 if !loggedInEmail.isEmpty {
-                    ProfileEditorView(userType: loggedInUserType, email: loggedInEmail) { saved in
+                    ProfileEditorView(
+                        userType: loggedInUserType,
+                        email: loggedInEmail,
+                        existingProfile: currentUserProfile    // ✅ pass existing profile
+                    ) { saved in
                         saveProfile(saved)
                         loadProfiles()
                         profileIncomplete = false
@@ -56,8 +73,6 @@ struct HomeView: View {
             .onAppear { loadProfiles() }
         }
     }
-
-    // MARK: - Subviews
 
     private var profileMissingView: some View {
         VStack(spacing: 16) {
@@ -138,7 +153,6 @@ struct HomeView: View {
                 .onChanged { dragOffset = $0.translation }
                 .onEnded { value in
                     if abs(value.translation.width) > 120 {
-                        // swipe away top profile
                         withAnimation(.spring()) {
                             _ = profiles.popLast()
                         }
@@ -149,12 +163,11 @@ struct HomeView: View {
         .padding(.horizontal, 20)
     }
 
-    // MARK: - Helpers
-
     private func saveProfile(_ profile: UserProfile) {
         if let encoded = try? JSONEncoder().encode(profile) {
             UserDefaults.standard.set(encoded, forKey: "\(profile.userType)_profile_\(profile.email)")
         }
+        currentUserProfile = profile
     }
 
     private func loadProfiles() {
@@ -164,27 +177,31 @@ struct HomeView: View {
         }
 
         var loaded: [UserProfile] = []
+        var myProfile: UserProfile?
 
-        // load all nanny and parent profiles
         let defaults = UserDefaults.standard
         for key in defaults.dictionaryRepresentation().keys {
             if key.hasPrefix("nanny_profile_") || key.hasPrefix("parent_profile_") {
                 if let data = defaults.data(forKey: key),
                    let decoded = try? JSONDecoder().decode(UserProfile.self, from: data) {
-                    // exclude logged-in user
-                    if decoded.email != loggedInEmail {
-                        loaded.append(decoded)
+                    if decoded.email == loggedInEmail {
+                        myProfile = decoded
                     } else {
-                        // logged in user’s own profile
-                        profileIncomplete = false
+                        loaded.append(decoded)
                     }
                 }
             }
         }
 
-        profiles = loaded.reversed() // last is top card
+        if let myProfile = myProfile {
+            currentUserProfile = myProfile
+            profileIncomplete = false
+        } else {
+            profileIncomplete = true
+        }
 
-        // cache first image for each profile
+        profiles = loaded.reversed()
+
         cachedImages.removeAll()
         for profile in profiles {
             if let firstImage = profile.imageFileNames.first,
