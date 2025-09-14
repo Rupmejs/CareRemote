@@ -11,14 +11,16 @@ struct ChatView: View {
 
     var body: some View {
         VStack {
+            // Messages scroll
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack {
+                    LazyVStack(spacing: 10) {
                         ForEach(messages.indices, id: \.self) { index in
                             chatBubble(messages[index])
                                 .id(index)
                         }
                     }
+                    .padding(.vertical, 10)
                 }
                 .onChange(of: messages) { _ in
                     withAnimation {
@@ -27,10 +29,10 @@ struct ChatView: View {
                 }
             }
 
-            // input bar
-            HStack {
+            // Input bar
+            HStack(spacing: 12) {
                 TextField("Type a message...", text: $newMessage)
-                    .foregroundColor(.black) // ✅ typing color black
+                    .foregroundColor(.black) // ✅ text color
                     .padding(12)
                     .background(Color.white)
                     .cornerRadius(20)
@@ -38,16 +40,17 @@ struct ChatView: View {
 
                 Button(action: sendMessage) {
                     Image(systemName: "paperplane.fill")
+                        .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.white)
                         .padding()
                         .background(Color.blue)
                         .clipShape(Circle())
-                        .shadow(radius: 2)
+                        .shadow(radius: 3)
                 }
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
-            .background(Color(red: 0.96, green: 0.95, blue: 0.90))
+            .background(Color(red: 0.96, green: 0.95, blue: 0.90)) // matches HomeView
         }
         .background(Color(red: 0.96, green: 0.95, blue: 0.90).ignoresSafeArea())
         .onAppear { loadMessages() }
@@ -76,15 +79,15 @@ struct ChatView: View {
             Text(text)
                 .padding()
                 .foregroundColor(isMe ? .white : .black)
-                .background(isMe ? Color.blue.opacity(0.8) : Color.white)
+                .background(isMe ? Color.blue.opacity(0.85) : Color.white)
                 .cornerRadius(16)
-                .shadow(radius: 2)
+                .shadow(color: .gray.opacity(0.3), radius: 4, x: 0, y: 2)
                 .frame(maxWidth: UIScreen.main.bounds.width * 0.7,
                        alignment: isMe ? .trailing : .leading)
             if !isMe { Spacer() }
         }
         .padding(.horizontal)
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
     }
 
     // MARK: - Messaging

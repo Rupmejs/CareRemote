@@ -5,70 +5,101 @@ struct ChatListView: View {
     @State private var myEmail: String = UserDefaults.standard.string(forKey: "loggedInEmail") ?? ""
 
     var body: some View {
-        List {
-            ForEach(matches, id: \.self) { email in
-                let chatId = makeChatId(with: email)
-                if let preview = UserDefaults.standard.stringArray(forKey: "chat_\(chatId)")?.last {
-                    NavigationLink(destination: ChatView(chatId: chatId, otherUser: email)) {
-                        chatRow(email: email, preview: preview)
+        ZStack {
+            // Beige background
+            Color(red: 0.96, green: 0.95, blue: 0.90).ignoresSafeArea()
+
+            if matches.isEmpty {
+                VStack {
+                    Spacer()
+                    Text("No chats yet")
+                        .font(.title2)
+                        .foregroundColor(.gray)
+                        .padding()
+                    Spacer()
+                }
+            } else {
+                ScrollView {
+                    VStack(spacing: 16) {
+                        ForEach(matches, id: \.self) { email in
+                            let chatId = makeChatId(with: email)
+                            let preview = UserDefaults.standard.string(forKey: "chatPreview_\(chatId)") ?? "Say hi 👋"
+
+                            // Load profile for display
+                            let profile = loadProfile(for: email)
+                            let displayName = profile.map { "\($0.name), \($0.age)" } ?? email
+                            let profileImage = profile?.imageFileNames.first.flatMap {
+                                FileStorageHelpers.loadImageFromDocuments(filename: $0)
+                            }
+
+                            NavigationLink(destination: ChatView(chatId: chatId, otherUser: displayName)) {
+                                HStack(spacing: 16) {
+                                    if let uiImage = profileImage {
+                                        Image(uiImage: uiImage)
+                                            .resizable()
+                                            .scaledToFill()
+                                            .frame(width: 48, height: 48)
+                                            .clipShape(Circle())
+                                            .shadow(radius: 3)
+                                    } else {
+                                        Image(systemName: "person.circle.fill")
+                                            .font(.system(size: 48))
+                                            .foregroundColor(.blue)
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text(displayName)
+                                            .font(.headline.bold())
+                                            .foregroundColor(.black)
+
+                                        Text(preview)
+                                            .font(.subheadline)
+                                            .foregroundColor(.gray)
+                                            .lineLimit(1)
+                                    }
+
+                                    Spacer()
+                                }
+                                .padding()
+                                .background(Color.white)
+                                .cornerRadius(20)
+                                .shadow(color: .gray.opacity(0.3), radius: 6, x: 0, y: 4)
+                            }
+                        }
                     }
-                } else {
-                    // If no messages, show placeholder preview
-                    NavigationLink(destination: ChatView(chatId: chatId, otherUser: email)) {
-                        chatRow(email: email, preview: "Say hi 👋")
-                    }
+                    .padding(.horizontal)
+                    .padding(.top, 20)
                 }
             }
-            .onDelete(perform: deleteChat) // swipe-to-delete option
         }
-        .listStyle(InsetGroupedListStyle())
+        // ✅ Toolbar items stay, background disappears
+        .toolbarBackground(.clear, for: .navigationBar)   // transparent background
+        .toolbarBackground(.visible, for: .navigationBar) // keep toolbar visible
         .navigationTitle("Chats")
-        .background(Color(red: 0.96, green: 0.95, blue: 0.90).ignoresSafeArea())
-        .onAppear {
-            cleanUpDeletedChats()
-        }
-    }
-
-    // MARK: - Chat row design
-    private func chatRow(email: String, preview: String) -> some View {
-        HStack {
-            Image(systemName: "person.circle.fill")
-                .font(.largeTitle)
-                .foregroundColor(.blue)
-            VStack(alignment: .leading) {
-                Text(email)
-                    .font(.headline)
-                Text(preview)
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
-                    .lineLimit(1)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("Chats")
+                    .font(.headline.bold())
+                    .foregroundColor(.blue) // Title always blue
             }
         }
-        .padding(.vertical, 8)
     }
 
-    // MARK: - Ensure unique shared chatId
     private func makeChatId(with other: String) -> String {
         return [myEmail, other].sorted().joined(separator: "_")
     }
 
-    // MARK: - Delete chat manually from list
-    private func deleteChat(at offsets: IndexSet) {
-        for index in offsets {
-            let email = matches[index]
-            let chatId = makeChatId(with: email)
-            UserDefaults.standard.removeObject(forKey: "chat_\(chatId)")
-            UserDefaults.standard.removeObject(forKey: "chatPreview_\(chatId)")
+    private func loadProfile(for email: String) -> UserProfile? {
+        let defaults = UserDefaults.standard
+        for key in defaults.dictionaryRepresentation().keys {
+            if key.contains(email),
+               let data = defaults.data(forKey: key),
+               let profile = try? JSONDecoder().decode(UserProfile.self, from: data) {
+                return profile
+            }
         }
-        matches.remove(atOffsets: offsets)
-    }
-
-    // MARK: - Clean up deleted chats
-    private func cleanUpDeletedChats() {
-        matches = matches.filter { email in
-            let chatId = makeChatId(with: email)
-            return UserDefaults.standard.stringArray(forKey: "chat_\(chatId)") != nil
-        }
+        return nil
     }
 }
 
