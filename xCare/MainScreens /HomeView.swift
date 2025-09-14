@@ -10,16 +10,20 @@ struct HomeView: View {
     @State private var profileIncomplete = false
     @State private var cachedImages: [UUID: UIImage] = [:]
 
+    // New state for chat
+    @State private var showChat = false
+
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .topTrailing) {
+            ZStack(alignment: .top) {
                 Color(red: 0.96, green: 0.95, blue: 0.90).ignoresSafeArea()
 
                 VStack(spacing: 20) {
+                    // Title
                     Text("xCare")
                         .font(.system(size: 42, weight: .bold, design: .rounded))
                         .foregroundColor(.blue)
-                        .padding(.top, 60)
+                        .padding(.top, 100)
 
                     Spacer()
 
@@ -41,17 +45,33 @@ struct HomeView: View {
                     }
                 }
 
-                Button(action: { showProfileEditor = true }) {
-                    Image(systemName: "person.crop.circle")
-                        .font(.system(size: 28))
-                        .foregroundColor(.blue)
-                        .padding()
-                        .background(Color.white.opacity(0.8))
-                        .clipShape(Circle())
-                        .shadow(radius: 3)
-                        .padding(.trailing, 16)
-                        .padding(.top, 60)
+                // Top bar with chat + profile buttons (matching ContentView style)
+                HStack {
+                    // Chat button (left side)
+                    Button(action: { showChat = true }) {
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                            .font(.title) // ✅ same size as ContentView icons
+                            .foregroundColor(.blue)
+                            .padding()
+                            .background(Color.white.opacity(0.8))
+                            .clipShape(Circle())
+                            .shadow(radius: 3)
+                    }
+
+                    Spacer()
+
+                    // Profile button (right side)
+                    Button(action: { showProfileEditor = true }) {
+                        Image(systemName: "person.crop.circle")
+                            .font(.title) // ✅ same size as ContentView icons
+                            .foregroundColor(.blue)
+                            .padding()
+                            .background(Color.white.opacity(0.8))
+                            .clipShape(Circle())
+                            .shadow(radius: 3)
+                    }
                 }
+                .padding() // same spacing as ContentView
             }
             .navigationBarBackButtonHidden(true)
             .navigationBarTitleDisplayMode(.inline)
@@ -60,7 +80,7 @@ struct HomeView: View {
                     ProfileEditorView(
                         userType: loggedInUserType,
                         email: loggedInEmail,
-                        existingProfile: currentUserProfile    // ✅ pass existing profile
+                        existingProfile: currentUserProfile
                     ) { saved in
                         saveProfile(saved)
                         loadProfiles()
@@ -69,6 +89,9 @@ struct HomeView: View {
                 } else {
                     Text("Error: No logged-in email found")
                 }
+            }
+            .fullScreenCover(isPresented: $showChat) {
+                ChatView()
             }
             .onAppear { loadProfiles() }
         }
