@@ -10,68 +10,77 @@ struct HomeView: View {
     @State private var profileIncomplete = false
     @State private var cachedImages: [UUID: UIImage] = [:]
 
-    // New state for chat
-    @State private var showChat = false
+    // Chat / matching
+    @State private var showChatList = false
+    @State private var likedProfiles: Set<String> = []
+    @State private var matches: [String] = UserDefaults.standard.stringArray(forKey: "matches") ?? []
+    @State private var showMatchAlert = false
+    @State private var matchedName: String = ""
+
+    private let cardHeight: CGFloat = 500
+    private let swipeThreshold: CGFloat = 120
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .top) {
+            ZStack {
                 Color(red: 0.96, green: 0.95, blue: 0.90).ignoresSafeArea()
 
-                VStack(spacing: 20) {
-                    // Title
-                    Text("xCare")
-                        .font(.system(size: 42, weight: .bold, design: .rounded))
-                        .foregroundColor(.blue)
-                        .padding(.top, 100)
+                VStack {
+                    // Top bar
+                    HStack {
+                        Button(action: { showChatList = true }) {
+                            Image(systemName: "bubble.left.and.bubble.right.fill")
+                                .font(.title)
+                                .foregroundColor(.blue)
+                                .padding()
+                                .background(Color.white.opacity(0.8))
+                                .clipShape(Circle())
+                                .shadow(radius: 3)
+                        }
 
-                    Spacer()
+                        Spacer()
 
+                        Button(action: { showProfileEditor = true }) {
+                            Image(systemName: "person.crop.circle")
+                                .font(.title)
+                                .foregroundColor(.blue)
+                                .padding()
+                                .background(Color.white.opacity(0.8))
+                                .clipShape(Circle())
+                                .shadow(radius: 3)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 20)
+
+                    Spacer().frame(height: 40)
+
+                    // Card stack
                     if profileIncomplete {
                         profileMissingView
+                            .frame(height: cardHeight)
+                            .padding(.horizontal, 20)
+                    } else if profiles.isEmpty {
+                        Text("No profiles to show")
+                            .foregroundColor(.gray)
+                            .frame(height: cardHeight)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(20)
+                            .shadow(radius: 6)
+                            .padding(.horizontal, 20)
                     } else {
-                        if profiles.isEmpty {
-                            Text("No profiles to show")
-                                .foregroundColor(.gray)
-                        } else {
-                            ZStack {
-                                ForEach(profiles) { profile in
-                                    profileCard(profile)
-                                        .zIndex(profile.id == profiles.last?.id ? 1 : 0)
-                                }
+                        ZStack {
+                            ForEach(profiles) { profile in
+                                let isTopCard = profile.id == profiles.last?.id
+                                profileCard(profile, isTopCard: isTopCard)
                             }
                         }
-                        Spacer()
-                    }
-                }
-
-                // Top bar with chat + profile buttons (matching ContentView style)
-                HStack {
-                    // Chat button (left side)
-                    Button(action: { showChat = true }) {
-                        Image(systemName: "bubble.left.and.bubble.right.fill")
-                            .font(.title) // ✅ same size as ContentView icons
-                            .foregroundColor(.blue)
-                            .padding()
-                            .background(Color.white.opacity(0.8))
-                            .clipShape(Circle())
-                            .shadow(radius: 3)
+                        .padding(.horizontal, 20)
                     }
 
                     Spacer()
-
-                    // Profile button (right side)
-                    Button(action: { showProfileEditor = true }) {
-                        Image(systemName: "person.crop.circle")
-                            .font(.title) // ✅ same size as ContentView icons
-                            .foregroundColor(.blue)
-                            .padding()
-                            .background(Color.white.opacity(0.8))
-                            .clipShape(Circle())
-                            .shadow(radius: 3)
-                    }
                 }
-                .padding() // same spacing as ContentView
             }
             .navigationBarBackButtonHidden(true)
             .navigationBarTitleDisplayMode(.inline)
@@ -83,20 +92,35 @@ struct HomeView: View {
                         existingProfile: currentUserProfile
                     ) { saved in
                         saveProfile(saved)
-                        loadProfiles()
+                        loadProfiles() // refresh instantly after saving
                         profileIncomplete = false
                     }
                 } else {
                     Text("Error: No logged-in email found")
                 }
             }
-            .fullScreenCover(isPresented: $showChat) {
-                ChatView()
+            .fullScreenCover(isPresented: $showChatList) {
+                NavigationStack {
+                    ChatListView(matches: matches)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarLeading) {
+                                Button("Close") { showChatList = false }
+                            }
+                        }
+                }
             }
-            .onAppear { loadProfiles() }
+            .onAppear { loadProfiles() } // refresh every time you land on HomeView
+            .alert(isPresented: $showMatchAlert) {
+                Alert(
+                    title: Text("🎉 It's a Match!"),
+                    message: Text("You matched with \(matchedName)"),
+                    dismissButton: .default(Text("OK"))
+                )
+            }
         }
     }
 
+    // MARK: - Profile Missing View
     private var profileMissingView: some View {
         VStack(spacing: 16) {
             Text("No profile found")
@@ -118,30 +142,24 @@ struct HomeView: View {
         .background(Color.white.opacity(0.9))
         .cornerRadius(20)
         .shadow(color: .gray.opacity(0.3), radius: 10, x: 0, y: 6)
-        .padding(.horizontal, 24)
     }
 
-    private func profileCard(_ profile: UserProfile) -> some View {
+    // MARK: - Profile Card
+    private func profileCard(_ profile: UserProfile, isTopCard: Bool) -> some View {
         ZStack {
             if let uiImage = cachedImages[profile.id] {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFill()
-                    .frame(height: 480)
+                    .frame(width: UIScreen.main.bounds.width - 80, height: cardHeight)
                     .clipped()
-                    .cornerRadius(28)
-                    .shadow(radius: 6)
             } else {
-                RoundedRectangle(cornerRadius: 28)
-                    .fill(Color.gray.opacity(0.4))
-                    .frame(height: 480)
-                    .overlay(
-                        Text("No photo")
-                            .foregroundColor(.white)
-                            .font(.title2.bold())
-                    )
+                Color.gray.opacity(0.4)
+                    .frame(width: UIScreen.main.bounds.width - 80, height: cardHeight)
+                    .overlay(Text("No photo").foregroundColor(.white))
             }
 
+            // Info overlay
             VStack {
                 Spacer()
                 HStack {
@@ -150,7 +168,6 @@ struct HomeView: View {
                             .font(.title.bold())
                             .foregroundColor(.white)
                             .shadow(radius: 2)
-
                         Text(profile.description)
                             .foregroundColor(.white)
                             .lineLimit(3)
@@ -166,26 +183,99 @@ struct HomeView: View {
                         endPoint: .top
                     )
                 )
-                .cornerRadius(20)
+            }
+
+            // ✅ Tinder-style LIKE / NOPE labels
+            if isTopCard {
+                HStack {
+                    if dragOffset.width > 0 {
+                        Text("LIKE ❤️")
+                            .font(.largeTitle.bold())
+                            .foregroundColor(.green)
+                            .padding()
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.green, lineWidth: 4)
+                            )
+                            .rotationEffect(.degrees(-15))
+                            .opacity(Double(min(dragOffset.width / swipeThreshold, 1)))
+                            .padding(.top, 40)
+                            .padding(.leading, 20)
+                        Spacer()
+                    } else if dragOffset.width < 0 {
+                        Spacer()
+                        Text("NOPE ❌")
+                            .font(.largeTitle.bold())
+                            .foregroundColor(.red)
+                            .padding()
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.red, lineWidth: 4)
+                            )
+                            .rotationEffect(.degrees(15))
+                            .opacity(Double(min(-dragOffset.width / swipeThreshold, 1)))
+                            .padding(.top, 40)
+                            .padding(.trailing, 20)
+                    }
+                }
             }
         }
-        .offset(x: profile.id == profiles.last?.id ? dragOffset.width : 0)
-        .rotationEffect(.degrees(profile.id == profiles.last?.id ? Double(dragOffset.width / 25) : 0))
+        .frame(height: cardHeight)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .shadow(radius: 6)
+        .padding(20)
+        .offset(x: isTopCard ? dragOffset.width : 0,
+                y: isTopCard ? dragOffset.height / 10 : 0)
+        .rotationEffect(.degrees(isTopCard ? Double(dragOffset.width / 25) : 0))
+        .scaleEffect(isTopCard ? 1.0 - min(abs(dragOffset.width) / 1000, 0.1) : 1.0)
+        .animation(.spring(), value: dragOffset)
         .gesture(
-            profile.id == profiles.last?.id ? DragGesture()
+            isTopCard ? DragGesture()
                 .onChanged { dragOffset = $0.translation }
                 .onEnded { value in
-                    if abs(value.translation.width) > 120 {
-                        withAnimation(.spring()) {
-                            _ = profiles.popLast()
-                        }
+                    if value.translation.width > swipeThreshold {
+                        handleLike(profile)
+                    } else if value.translation.width < -swipeThreshold {
+                        _ = profiles.popLast()
                     }
                     dragOffset = .zero
                 } : nil
         )
-        .padding(.horizontal, 20)
     }
 
+    // MARK: - Likes & Matches
+    private func handleLike(_ profile: UserProfile) {
+        likedProfiles.insert(profile.email)
+        saveLike(for: profile.email)
+
+        if otherUserLikedMe(profile.email) {
+            matches.append(profile.email)
+            saveMatch(with: profile.email)
+            matchedName = profile.name
+            showMatchAlert = true
+        }
+
+        _ = profiles.popLast()
+    }
+
+    private func saveLike(for email: String) {
+        var likes = UserDefaults.standard.stringArray(forKey: "likes_\(loggedInEmail)") ?? []
+        if !likes.contains(email) { likes.append(email) }
+        UserDefaults.standard.set(likes, forKey: "likes_\(loggedInEmail)")
+    }
+
+    private func otherUserLikedMe(_ email: String) -> Bool {
+        let otherLikes = UserDefaults.standard.stringArray(forKey: "likes_\(email)") ?? []
+        return otherLikes.contains(loggedInEmail)
+    }
+
+    private func saveMatch(with email: String) {
+        var allMatches = UserDefaults.standard.stringArray(forKey: "matches") ?? []
+        if !allMatches.contains(email) { allMatches.append(email) }
+        UserDefaults.standard.set(allMatches, forKey: "matches")
+    }
+
+    // MARK: - Profile Management
     private func saveProfile(_ profile: UserProfile) {
         if let encoded = try? JSONEncoder().encode(profile) {
             UserDefaults.standard.set(encoded, forKey: "\(profile.userType)_profile_\(profile.email)")
@@ -210,7 +300,12 @@ struct HomeView: View {
                     if decoded.email == loggedInEmail {
                         myProfile = decoded
                     } else {
-                        loaded.append(decoded)
+                        // ✅ Only show opposite type
+                        if loggedInUserType == "nanny" && decoded.userType == "parent" {
+                            loaded.append(decoded)
+                        } else if loggedInUserType == "parent" && decoded.userType == "nanny" {
+                            loaded.append(decoded)
+                        }
                     }
                 }
             }
@@ -223,8 +318,9 @@ struct HomeView: View {
             profileIncomplete = true
         }
 
-        profiles = loaded.reversed()
+        profiles = loaded // all opposite-type profiles
 
+        // Cache images
         cachedImages.removeAll()
         for profile in profiles {
             if let firstImage = profile.imageFileNames.first,
