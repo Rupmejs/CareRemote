@@ -2,54 +2,96 @@ import SwiftUI
 
 struct ChatView: View {
     let chatId: String
+    let otherUser: String
+    
     @State private var messages: [String] = []
     @State private var newMessage: String = ""
+    @State private var myEmail: String = UserDefaults.standard.string(forKey: "loggedInEmail") ?? ""
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack {
-            ScrollView {
-                ForEach(messages, id: \.self) { msg in
-                    HStack {
-                        if msg.starts(with: "me:") {
-                            Spacer()
-                            Text(msg.replacingOccurrences(of: "me:", with: ""))
-                                .padding()
-                                .background(Color.blue.opacity(0.7))
-                                .foregroundColor(.white)
-                                .cornerRadius(12)
-                        } else {
-                            Text(msg)
-                                .padding()
-                                .background(Color.gray.opacity(0.3))
-                                .cornerRadius(12)
-                            Spacer()
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack {
+                        ForEach(messages.indices, id: \.self) { index in
+                            chatBubble(messages[index])
+                                .id(index)
                         }
                     }
-                    .padding(.horizontal)
+                }
+                .onChange(of: messages) { _ in
+                    withAnimation {
+                        proxy.scrollTo(messages.count - 1, anchor: .bottom)
+                    }
                 }
             }
 
+            // input bar
             HStack {
                 TextField("Type a message...", text: $newMessage)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .foregroundColor(.black) // ✅ typing color black
+                    .padding(12)
+                    .background(Color.white)
+                    .cornerRadius(20)
+                    .shadow(radius: 2)
+
                 Button(action: sendMessage) {
                     Image(systemName: "paperplane.fill")
                         .foregroundColor(.white)
                         .padding()
                         .background(Color.blue)
                         .clipShape(Circle())
+                        .shadow(radius: 2)
                 }
             }
-            .padding()
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .background(Color(red: 0.96, green: 0.95, blue: 0.90))
         }
+        .background(Color(red: 0.96, green: 0.95, blue: 0.90).ignoresSafeArea())
         .onAppear { loadMessages() }
-        .navigationTitle("Chat")
+        .navigationTitle(otherUser)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            // ✅ Delete conversation button
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(role: .destructive) {
+                    deleteConversation()
+                } label: {
+                    Image(systemName: "trash")
+                }
+            }
+        }
     }
 
+    // MARK: - Bubble design
+    private func chatBubble(_ msg: String) -> some View {
+        let sender = msg.split(separator: ":", maxSplits: 1).map(String.init)
+        let isMe = sender.first == myEmail
+        let text = sender.count > 1 ? sender[1] : msg
+
+        return HStack {
+            if isMe { Spacer() }
+            Text(text)
+                .padding()
+                .foregroundColor(isMe ? .white : .black)
+                .background(isMe ? Color.blue.opacity(0.8) : Color.white)
+                .cornerRadius(16)
+                .shadow(radius: 2)
+                .frame(maxWidth: UIScreen.main.bounds.width * 0.7,
+                       alignment: isMe ? .trailing : .leading)
+            if !isMe { Spacer() }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 4)
+    }
+
+    // MARK: - Messaging
     private func sendMessage() {
         guard !newMessage.isEmpty else { return }
-        messages.append("me:" + newMessage)
+        let msg = "\(myEmail):\(newMessage)"
+        messages.append(msg)
         saveMessages()
         newMessage = ""
     }
@@ -62,6 +104,15 @@ struct ChatView: View {
 
     private func saveMessages() {
         UserDefaults.standard.set(messages, forKey: "chat_\(chatId)")
+        UserDefaults.standard.set(messages.last, forKey: "chatPreview_\(chatId)")
+    }
+
+    // MARK: - Delete conversation
+    private func deleteConversation() {
+        UserDefaults.standard.removeObject(forKey: "chat_\(chatId)")
+        UserDefaults.standard.removeObject(forKey: "chatPreview_\(chatId)")
+        messages.removeAll()
+        dismiss() // go back to chat list
     }
 }
 
