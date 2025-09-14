@@ -1,5 +1,9 @@
 import SwiftUI
 
+extension Notification.Name {
+    static let profilesUpdated = Notification.Name("profilesUpdated")
+}
+
 struct HomeView: View {
     @State private var dragOffset: CGSize = .zero
     @State private var loggedInUserType: String = UserDefaults.standard.string(forKey: "loggedInUserType") ?? "nanny"
@@ -17,6 +21,13 @@ struct HomeView: View {
     @State private var showMatchAlert = false
     @State private var matchedName: String = ""
 
+    // Preload ChatListView
+    @State private var preloadedChatListView: ChatListView?
+
+    // Button animations
+    @State private var isChatButtonPressed = false
+    @State private var isProfileButtonPressed = false
+
     private let cardHeight: CGFloat = 500
     private let swipeThreshold: CGFloat = 120
 
@@ -28,7 +39,16 @@ struct HomeView: View {
                 VStack {
                     // Top bar
                     HStack {
-                        Button(action: { showChatList = true }) {
+                        // Chat button with bounce
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                isChatButtonPressed = true
+                            }
+                            withAnimation(.spring().delay(0.15)) {
+                                isChatButtonPressed = false
+                            }
+                            showChatList = true   // ✅ open immediately
+                        }) {
                             Image(systemName: "bubble.left.and.bubble.right.fill")
                                 .font(.title)
                                 .foregroundColor(.blue)
@@ -37,10 +57,20 @@ struct HomeView: View {
                                 .clipShape(Circle())
                                 .shadow(radius: 3)
                         }
+                        .scaleEffect(isChatButtonPressed ? 0.85 : 1.0)
 
                         Spacer()
 
-                        Button(action: { showProfileEditor = true }) {
+                        // Profile button with bounce
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                isProfileButtonPressed = true
+                            }
+                            withAnimation(.spring().delay(0.15)) {
+                                isProfileButtonPressed = false
+                            }
+                            showProfileEditor = true
+                        }) {
                             Image(systemName: "person.crop.circle")
                                 .font(.title)
                                 .foregroundColor(.blue)
@@ -49,6 +79,7 @@ struct HomeView: View {
                                 .clipShape(Circle())
                                 .shadow(radius: 3)
                         }
+                        .scaleEffect(isProfileButtonPressed ? 0.85 : 1.0)
                     }
                     .padding(.horizontal)
                     .padding(.top, 20)
@@ -92,7 +123,7 @@ struct HomeView: View {
                         existingProfile: currentUserProfile
                     ) { saved in
                         saveProfile(saved)
-                        loadProfiles() // refresh instantly after saving
+                        loadProfiles()
                         profileIncomplete = false
                     }
                 } else {
@@ -100,16 +131,28 @@ struct HomeView: View {
                 }
             }
             .fullScreenCover(isPresented: $showChatList) {
-                NavigationStack {
-                    ChatListView(matches: matches)
-                        .toolbar {
-                            ToolbarItem(placement: .navigationBarLeading) {
-                                Button("Close") { showChatList = false }
+                if let chatListView = preloadedChatListView {
+                    NavigationStack {
+                        chatListView
+                            .toolbar {
+                                ToolbarItem(placement: .navigationBarLeading) {
+                                    Button("Close") { showChatList = false }
+                                }
                             }
-                        }
+                    }
                 }
             }
-            .onAppear { loadProfiles() } // refresh every time you land on HomeView
+            .onAppear {
+                loadProfiles()
+                // 👂 Listen for live profile updates
+                NotificationCenter.default.addObserver(forName: .profilesUpdated, object: nil, queue: .main) { _ in
+                    loadProfiles()
+                }
+                // ✅ Preload ChatListView
+                if preloadedChatListView == nil {
+                    preloadedChatListView = ChatListView(matches: $matches)
+                }
+            }
             .alert(isPresented: $showMatchAlert) {
                 Alert(
                     title: Text("🎉 It's a Match!"),
@@ -159,7 +202,6 @@ struct HomeView: View {
                     .overlay(Text("No photo").foregroundColor(.white))
             }
 
-            // Info overlay
             VStack {
                 Spacer()
                 HStack {
@@ -185,7 +227,6 @@ struct HomeView: View {
                 )
             }
 
-            // ✅ Tinder-style LIKE / NOPE labels
             if isTopCard {
                 HStack {
                     if dragOffset.width > 0 {
@@ -273,6 +314,7 @@ struct HomeView: View {
         var allMatches = UserDefaults.standard.stringArray(forKey: "matches") ?? []
         if !allMatches.contains(email) { allMatches.append(email) }
         UserDefaults.standard.set(allMatches, forKey: "matches")
+        matches = allMatches  // ✅ keep state in sync
     }
 
     // MARK: - Profile Management
@@ -281,6 +323,9 @@ struct HomeView: View {
             UserDefaults.standard.set(encoded, forKey: "\(profile.userType)_profile_\(profile.email)")
         }
         currentUserProfile = profile
+
+        // 🔔 Trigger live update
+        NotificationCenter.default.post(name: .profilesUpdated, object: nil)
     }
 
     private func loadProfiles() {
@@ -300,7 +345,6 @@ struct HomeView: View {
                     if decoded.email == loggedInEmail {
                         myProfile = decoded
                     } else {
-                        // ✅ Only show opposite type
                         if loggedInUserType == "nanny" && decoded.userType == "parent" {
                             loaded.append(decoded)
                         } else if loggedInUserType == "parent" && decoded.userType == "nanny" {
@@ -318,9 +362,8 @@ struct HomeView: View {
             profileIncomplete = true
         }
 
-        profiles = loaded // all opposite-type profiles
+        profiles = loaded
 
-        // Cache images
         cachedImages.removeAll()
         for profile in profiles {
             if let firstImage = profile.imageFileNames.first,
