@@ -27,12 +27,14 @@ struct RegisterParents: View {
                             .font(.system(size: 16))
 
                         VStack(spacing: 20) {
+                            // Username
                             TextField("", text: $username, prompt: Text("Username").foregroundColor(.black.opacity(0.7)))
                                 .foregroundColor(.black)
                                 .padding()
                                 .background(Color.gray.opacity(0.2))
                                 .cornerRadius(12)
 
+                            // Email
                             TextField("", text: $email, prompt: Text("Email").foregroundColor(.black.opacity(0.7)))
                                 .keyboardType(.emailAddress)
                                 .autocapitalization(.none)
@@ -41,6 +43,7 @@ struct RegisterParents: View {
                                 .background(Color.gray.opacity(0.2))
                                 .cornerRadius(12)
 
+                            // Password
                             ZStack(alignment: .trailing) {
                                 if showPassword {
                                     TextField("", text: $password, prompt: Text("Password").foregroundColor(.black.opacity(0.7)))
@@ -63,18 +66,21 @@ struct RegisterParents: View {
                                 }
                             }
 
+                            // Confirm Password
                             SecureField("", text: $confirmPassword, prompt: Text("Confirm Password").foregroundColor(.black.opacity(0.7)))
                                 .foregroundColor(.black)
                                 .padding()
                                 .background(Color.gray.opacity(0.2))
                                 .cornerRadius(12)
 
+                            // Error
                             if let error = errorMessage {
                                 Text(error)
                                     .foregroundColor(.red)
                                     .font(.subheadline)
                             }
 
+                            // Sign Up Button
                             Button(action: { signUp() }) {
                                 Text("Sign Up")
                                     .foregroundColor(.white)
@@ -85,6 +91,7 @@ struct RegisterParents: View {
                             }
                             .padding(.top, 10)
 
+                            // Navigate to login
                             HStack {
                                 Text("Already have an account?")
                                     .foregroundColor(.black)
@@ -111,24 +118,32 @@ struct RegisterParents: View {
         }
     }
 
+    // MARK: - Sign Up
     private func signUp() {
         guard !username.isEmpty, !email.isEmpty, !password.isEmpty, !confirmPassword.isEmpty else {
             errorMessage = "Please fill in all fields."
             return
         }
-
+        guard isValidEmail(email) else {
+            errorMessage = "Please enter a valid email address."
+            return
+        }
         guard password == confirmPassword else {
             errorMessage = "Passwords do not match."
             return
         }
 
-        // Save user
         saveUser(userType: "parent", username: username, email: email, password: password)
+
+        // Save last registered email for autofill
+        UserDefaults.standard.set(email, forKey: "lastRegisteredEmail_parent")
+        UserDefaults.standard.synchronize()
 
         errorMessage = nil
         navigateToLogin = true
     }
 
+    // MARK: - Save User
     private func saveUser(userType: String, username: String, email: String, password: String) {
         let user = ["username": username, "email": email, "password": password]
         let key = userType == "parent" ? "parentUsers" : "nannyUsers"
@@ -137,6 +152,12 @@ struct RegisterParents: View {
         existingUsers.append(user)
 
         UserDefaults.standard.set(existingUsers, forKey: key)
+    }
+
+    // MARK: - Email Validation
+    private func isValidEmail(_ email: String) -> Bool {
+        let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
+        return NSPredicate(format: "SELF MATCHES %@", emailRegex).evaluate(with: email)
     }
 }
 

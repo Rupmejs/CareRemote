@@ -43,7 +43,7 @@ struct RegisterNannies: View {
                                 .background(Color.gray.opacity(0.2))
                                 .cornerRadius(12)
 
-                            // Password with show/hide
+                            // Password
                             ZStack(alignment: .trailing) {
                                 if showPassword {
                                     TextField("", text: $password, prompt: Text("Password").foregroundColor(.black.opacity(0.7)))
@@ -118,9 +118,14 @@ struct RegisterNannies: View {
         }
     }
 
+    // MARK: - Sign Up
     private func signUp() {
         guard !username.isEmpty, !email.isEmpty, !password.isEmpty, !confirmPassword.isEmpty else {
             errorMessage = "Please fill in all fields."
+            return
+        }
+        guard isValidEmail(email) else {
+            errorMessage = "Please enter a valid email address."
             return
         }
         guard password == confirmPassword else {
@@ -134,8 +139,17 @@ struct RegisterNannies: View {
         savedUsers.append(newUser)
         UserDefaults.standard.set(savedUsers, forKey: "nannyUsers")
 
+        // Save last registered email for autofill
+        UserDefaults.standard.set(email, forKey: "lastRegisteredEmail_nanny")
+        UserDefaults.standard.synchronize()
+
         errorMessage = nil
         navigateToLogin = true
+    }
+
+    private func isValidEmail(_ email: String) -> Bool {
+        let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
+        return NSPredicate(format: "SELF MATCHES %@", emailRegex).evaluate(with: email)
     }
 }
 

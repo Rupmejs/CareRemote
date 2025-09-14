@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LoginNanny: View {
-    @State private var email: String = ""
+    @State private var email: String = UserDefaults.standard.string(forKey: "lastRegisteredEmail_nanny") ?? ""
     @State private var password: String = ""
     @State private var showPassword: Bool = false
     @State private var showHome = false
@@ -27,6 +27,7 @@ struct LoginNanny: View {
                         .font(.system(size: 16))
 
                     VStack(spacing: 20) {
+                        // Email (pre-filled if available, still editable)
                         TextField("", text: $email, prompt: Text("Email").foregroundColor(.black.opacity(0.7)))
                             .keyboardType(.emailAddress)
                             .autocapitalization(.none)
@@ -35,6 +36,7 @@ struct LoginNanny: View {
                             .cornerRadius(12)
                             .foregroundColor(.black)
 
+                        // Password
                         ZStack(alignment: .trailing) {
                             if showPassword {
                                 TextField("", text: $password, prompt: Text("Password").foregroundColor(.black.opacity(0.7)))
