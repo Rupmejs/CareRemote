@@ -2,6 +2,7 @@ import SwiftUI
 
 extension Notification.Name {
     static let profilesUpdated = Notification.Name("profilesUpdated")
+    static let newMessage = Notification.Name("newMessage") // 🔔 triggered from ChatView
 }
 
 struct HomeView: View {
@@ -15,17 +16,19 @@ struct HomeView: View {
     @State private var cachedImages: [UUID: UIImage] = [:]
 
     // Chat / matching
-    @State private var showChatList = false
     @State private var likedProfiles: Set<String> = []
     @State private var matches: [String] = UserDefaults.standard.stringArray(forKey: "matches") ?? []
     @State private var showMatchAlert = false
     @State private var matchedName: String = ""
 
-    // Preload ChatListView
-    @State private var preloadedChatListView: ChatListView?
+    // Chat navigation
+    @State private var selectedChat: (chatId: String, otherUser: String, email: String)? = nil
+    @State private var showChatList = false
+
+    // Unread counts
+    @State private var unreadCounts: [String: Int] = [:]
 
     // Button animations
-    @State private var isChatButtonPressed = false
     @State private var isProfileButtonPressed = false
 
     private let cardHeight: CGFloat = 500
@@ -36,32 +39,10 @@ struct HomeView: View {
             ZStack {
                 Color(red: 0.96, green: 0.95, blue: 0.90).ignoresSafeArea()
 
-                VStack {
+                VStack(spacing: 20) {
                     // Top bar
                     HStack {
-                        // Chat button with bounce
-                        Button(action: {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                isChatButtonPressed = true
-                            }
-                            withAnimation(.spring().delay(0.15)) {
-                                isChatButtonPressed = false
-                            }
-                            showChatList = true   // ✅ open immediately
-                        }) {
-                            Image(systemName: "bubble.left.and.bubble.right.fill")
-                                .font(.title)
-                                .foregroundColor(.blue)
-                                .padding()
-                                .background(Color.white.opacity(0.8))
-                                .clipShape(Circle())
-                                .shadow(radius: 3)
-                        }
-                        .scaleEffect(isChatButtonPressed ? 0.85 : 1.0)
-
                         Spacer()
-
-                        // Profile button with bounce
                         Button(action: {
                             withAnimation(.easeInOut(duration: 0.15)) {
                                 isProfileButtonPressed = true
@@ -84,34 +65,139 @@ struct HomeView: View {
                     .padding(.horizontal)
                     .padding(.top, 20)
 
-                    Spacer().frame(height: 40)
-
-                    // Card stack
-                    if profileIncomplete {
-                        profileMissingView
-                            .frame(height: cardHeight)
-                            .padding(.horizontal, 20)
-                    } else if profiles.isEmpty {
-                        Text("No profiles to show")
-                            .foregroundColor(.gray)
-                            .frame(height: cardHeight)
-                            .frame(maxWidth: .infinity)
-                            .background(Color.white.opacity(0.2))
-                            .cornerRadius(20)
+                    // Matches Box
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(Color.white.opacity(0.7))
                             .shadow(radius: 6)
-                            .padding(.horizontal, 20)
-                    } else {
-                        ZStack {
-                            ForEach(profiles) { profile in
-                                let isTopCard = profile.id == profiles.last?.id
-                                profileCard(profile, isTopCard: isTopCard)
+
+                        VStack(spacing: 12) {
+                            Text("Your Matches")
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .foregroundColor(.blue)
+
+                            if matches.isEmpty {
+                                VStack(spacing: 10) {
+                                    Image(systemName: "person.crop.circle.badge.plus")
+                                        .resizable()
+                                        .frame(width: 70, height: 70)
+                                        .foregroundColor(.blue.opacity(0.7))
+                                    Text("No matches yet")
+                                        .font(.headline)
+                                        .foregroundColor(.black)
+                                    Text("Swipe right on profiles to connect and start chatting!")
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+                                        .multilineTextAlignment(.center)
+                                        .padding(.horizontal, 20)
+                                }
+                                .padding(.vertical, 30)
+                            } else {
+                                HStack(spacing: 20) {
+                                    ForEach(sortedMatches().prefix(3), id: \.self) { email in
+                                        if let profile = loadProfile(for: email),
+                                           let firstImage = profile.imageFileNames.first,
+                                           let uiImage = FileStorageHelpers.loadImageFromDocuments(filename: firstImage) {
+                                            Button {
+                                                openChat(with: profile)
+                                            } label: {
+                                                VStack(spacing: 6) {
+                                                    ZStack(alignment: .topTrailing) {
+                                                        Image(uiImage: uiImage)
+                                                            .resizable()
+                                                            .scaledToFill()
+                                                            .frame(width: 70, height: 70)
+                                                            .clipShape(Circle())
+                                                            .shadow(radius: 3)
+
+                                                        if let count = unreadCounts[email], count > 0 {
+                                                            Text("\(count)")
+                                                                .font(.caption2).bold()
+                                                                .foregroundColor(.white)
+                                                                .padding(6)
+                                                                .background(Color.red)
+                                                                .clipShape(Circle())
+                                                                .offset(x: 8, y: -8)
+                                                        }
+                                                    }
+                                                    Text(profile.name)
+                                                        .font(.caption)
+                                                        .foregroundColor(.black)
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if matches.count > 3 {
+                                        Button { showChatList = true } label: {
+                                            ZStack {
+                                                Circle()
+                                                    .fill(Color.blue.opacity(0.2))
+                                                    .frame(width: 70, height: 70)
+                                                Text("+\(matches.count - 3)")
+                                                    .font(.headline)
+                                                    .foregroundColor(.blue)
+                                            }
+                                            .shadow(radius: 3)
+                                        }
+                                    }
+                                }
+                                .padding(.vertical, 10)
                             }
                         }
-                        .padding(.horizontal, 20)
+                        .padding()
                     }
+                    .padding(.horizontal, 20)
+
+                    // Swipe Cards Container
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(Color.white.opacity(0.7))
+                            .shadow(radius: 6)
+
+                        if profileIncomplete {
+                            profileMissingView
+                                .frame(height: cardHeight)
+                                .padding(.horizontal, 20)
+                        } else if profiles.isEmpty {
+                            Text("No profiles to show")
+                                .foregroundColor(.gray)
+                                .frame(height: cardHeight)
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            ZStack {
+                                ForEach(profiles) { profile in
+                                    let isTopCard = profile.id == profiles.last?.id
+                                    profileCard(profile, isTopCard: isTopCard)
+                                }
+                            }
+                        }
+                    }
+                    .frame(height: cardHeight + 60)
+                    .padding(.horizontal, 20)
 
                     Spacer()
                 }
+
+                // Hidden NavigationLink for ChatView
+                NavigationLink(
+                    destination: Group {
+                        if let chat = selectedChat {
+                            ChatView(
+                                chatId: chat.chatId,
+                                otherUser: chat.otherUser,
+                                otherUserEmail: chat.email
+                            )
+                        } else {
+                            EmptyView()
+                        }
+                    },
+                    isActive: Binding(
+                        get: { selectedChat != nil },
+                        set: { if !$0 { selectedChat = nil } }
+                    )
+                ) { EmptyView() }
+                .hidden()
             }
             .navigationBarBackButtonHidden(true)
             .navigationBarTitleDisplayMode(.inline)
@@ -126,31 +212,29 @@ struct HomeView: View {
                         loadProfiles()
                         profileIncomplete = false
                     }
-                } else {
-                    Text("Error: No logged-in email found")
                 }
             }
             .fullScreenCover(isPresented: $showChatList) {
-                if let chatListView = preloadedChatListView {
-                    NavigationStack {
-                        chatListView
-                            .toolbar {
-                                ToolbarItem(placement: .navigationBarLeading) {
-                                    Button("Close") { showChatList = false }
-                                }
+                NavigationStack {
+                    ChatListView(matches: $matches)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarLeading) {
+                                Button("Close") { showChatList = false }
                             }
-                    }
+                        }
                 }
             }
             .onAppear {
                 loadProfiles()
-                // 👂 Listen for live profile updates
+                loadUnreadCounts()
                 NotificationCenter.default.addObserver(forName: .profilesUpdated, object: nil, queue: .main) { _ in
                     loadProfiles()
+                    loadUnreadCounts()
                 }
-                // ✅ Preload ChatListView
-                if preloadedChatListView == nil {
-                    preloadedChatListView = ChatListView(matches: $matches)
+                NotificationCenter.default.addObserver(forName: .newMessage, object: nil, queue: .main) { note in
+                    if let email = note.userInfo?["from"] as? String {
+                        incrementUnread(for: email)
+                    }
                 }
             }
             .alert(isPresented: $showMatchAlert) {
@@ -160,6 +244,58 @@ struct HomeView: View {
                     dismissButton: .default(Text("OK"))
                 )
             }
+        }
+    }
+
+    // MARK: - Match Helpers
+    private func loadProfile(for email: String) -> UserProfile? {
+        let defaults = UserDefaults.standard
+        for key in defaults.dictionaryRepresentation().keys {
+            if key.hasSuffix(email),
+               let data = defaults.data(forKey: key),
+               let profile = try? JSONDecoder().decode(UserProfile.self, from: data) {
+                return profile
+            }
+        }
+        return nil
+    }
+
+    private func openChat(with profile: UserProfile) {
+        let chatId = [loggedInEmail, profile.email].sorted().joined(separator: "_")
+        let displayName = "\(profile.name), \(profile.age)"
+        selectedChat = (chatId, displayName, profile.email)
+
+        // Reset unread for this user
+        let key = "unread_\(profile.email)"
+        UserDefaults.standard.set(0, forKey: key)
+        unreadCounts[profile.email] = 0
+    }
+
+    private func loadUnreadCounts() {
+        var counts: [String: Int] = [:]
+        for email in matches {
+            let key = "unread_\(email)"
+            counts[email] = UserDefaults.standard.integer(forKey: key)
+        }
+        unreadCounts = counts
+    }
+
+    private func incrementUnread(for email: String) {
+        let key = "unread_\(email)"
+        let current = UserDefaults.standard.integer(forKey: key)
+        UserDefaults.standard.set(current + 1, forKey: key)
+        unreadCounts[email] = current + 1
+
+        // Save last message timestamp for sorting
+        let tKey = "lastmsg_\(email)"
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: tKey)
+    }
+
+    private func sortedMatches() -> [String] {
+        matches.sorted { a, b in
+            let tA = UserDefaults.standard.double(forKey: "lastmsg_\(a)")
+            let tB = UserDefaults.standard.double(forKey: "lastmsg_\(b)")
+            return tA > tB
         }
     }
 
@@ -269,7 +405,6 @@ struct HomeView: View {
                 y: isTopCard ? dragOffset.height / 10 : 0)
         .rotationEffect(.degrees(isTopCard ? Double(dragOffset.width / 25) : 0))
         .scaleEffect(isTopCard ? 1.0 - min(abs(dragOffset.width) / 1000, 0.1) : 1.0)
-        .animation(.spring(), value: dragOffset)
         .gesture(
             isTopCard ? DragGesture()
                 .onChanged { dragOffset = $0.translation }
@@ -314,7 +449,7 @@ struct HomeView: View {
         var allMatches = UserDefaults.standard.stringArray(forKey: "matches") ?? []
         if !allMatches.contains(email) { allMatches.append(email) }
         UserDefaults.standard.set(allMatches, forKey: "matches")
-        matches = allMatches  // ✅ keep state in sync
+        matches = allMatches
     }
 
     // MARK: - Profile Management
@@ -323,8 +458,6 @@ struct HomeView: View {
             UserDefaults.standard.set(encoded, forKey: "\(profile.userType)_profile_\(profile.email)")
         }
         currentUserProfile = profile
-
-        // 🔔 Trigger live update
         NotificationCenter.default.post(name: .profilesUpdated, object: nil)
     }
 
