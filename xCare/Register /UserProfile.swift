@@ -3,7 +3,7 @@ import Foundation
 struct UserProfile: Identifiable, Codable {
     let id: UUID
     var userType: String   // "nanny" or "parent"
-    var email: String      // 👈 NEW — ties profile to account
+    var email: String
     var name: String
     var age: Int
     var description: String
@@ -19,4 +19,3 @@ struct UserProfile: Identifiable, Codable {
         self.imageFileNames = imageFileNames
     }
 }
-
