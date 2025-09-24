@@ -152,4 +152,3 @@ struct RegisterNannies: View {
         return NSPredicate(format: "SELF MATCHES %@", emailRegex).evaluate(with: email)
     }
 }
-

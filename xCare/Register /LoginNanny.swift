@@ -5,7 +5,6 @@ struct LoginNanny: View {
     @State private var password: String = ""
     @State private var showPassword: Bool = false
     @State private var showHome = false
-    @State private var showProfileEditor = false
     @State private var errorMessage: String?
 
     @EnvironmentObject var appState: AppState
@@ -94,25 +93,6 @@ struct LoginNanny: View {
                 }
 
                 NavigationLink(destination: HomeView().environmentObject(appState), isActive: $showHome) { EmptyView() }
-
-                NavigationLink(
-                    destination: ProfileEditorView(userType: "nanny", email: email, existingProfile: nil) { saved in
-                        let profile = UserProfile(
-                            userType: "nanny",
-                            email: email,
-                            name: saved.name,
-                            age: saved.age,
-                            description: saved.description,
-                            imageFileNames: saved.imageFileNames
-                        )
-                        if let encoded = try? JSONEncoder().encode(profile) {
-                            UserDefaults.standard.set(encoded, forKey: "nanny_profile_\(email)")
-                        }
-                        showProfileEditor = false
-                        showHome = true
-                    },
-                    isActive: $showProfileEditor
-                ) { EmptyView() }
             }
             .navigationBarTitle("", displayMode: .inline)
         }
@@ -130,20 +110,9 @@ struct LoginNanny: View {
             errorMessage = nil
             appState.logIn(userType: "nanny")
             UserDefaults.standard.set(email, forKey: "loggedInEmail")
-
-            if let data = UserDefaults.standard.data(forKey: "nanny_profile_\(email)"),
-               let decoded = try? JSONDecoder().decode(UserProfile.self, from: data),
-               decoded.email == email,
-               !decoded.name.isEmpty,
-               decoded.age > 0,
-               !decoded.imageFileNames.isEmpty {
-                showHome = true
-            } else {
-                showProfileEditor = true
-            }
+            showHome = true
         } else {
             errorMessage = "Invalid email or password."
         }
     }
 }
-

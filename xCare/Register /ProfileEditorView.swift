@@ -44,7 +44,7 @@ struct ProfileEditorView: View {
 
                 ScrollView {
                     VStack(spacing: 30) {
-                        Spacer().frame(height: 50)
+                        Spacer().frame(height: 20) // Reduced to account for navigation bar
                         
                         // Header like ContentView
                         Text("xCare")
@@ -348,7 +348,30 @@ struct ProfileEditorView: View {
                 }
                 .onTapGesture { hideKeyboard() }
             }
-            .toolbar(.hidden, for: .navigationBar)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        presentationMode.wrappedValue.dismiss()
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 18, weight: .semibold))
+                            Text("Back")
+                                .font(.system(size: 18, weight: .regular))
+                        }
+                        .foregroundColor(.blue)
+                    }
+                }
+                
+                ToolbarItem(placement: .principal) {
+                    Text(userType.capitalized + " Profile")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.blue)
+                }
+            }
+            .toolbarBackground(Color(red: 0.96, green: 0.95, blue: 0.90), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .onAppear { loadExistingProfile() }
             .sheet(isPresented: $showingPicker) {
                 PhotoPicker(selectionLimit: 6) { images in

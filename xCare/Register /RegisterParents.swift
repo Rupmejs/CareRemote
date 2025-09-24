@@ -160,4 +160,3 @@ struct RegisterParents: View {
         return NSPredicate(format: "SELF MATCHES %@", emailRegex).evaluate(with: email)
     }
 }
-
