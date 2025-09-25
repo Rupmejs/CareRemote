@@ -23,14 +23,7 @@ struct WidgetView: View {
                 EmergencyWidget(widget: $widget, onSave: onSave)
             }
         }
-        .frame(height: widget.data.widgetSize == .small ? 120 : 180)
         .contextMenu {
-            Button(widget.data.widgetSize == .large ? "Make Small" : "Make Large") {
-                widget.data.widgetSize = widget.data.widgetSize == .large ? .small : .large
-                widget.data.lastUpdated = Date()
-                onSave()
-            }
-            
             Button(role: .destructive) {
                 onDelete()
             } label: {
@@ -47,238 +40,59 @@ struct RemindersWidget: View {
     @State private var newReminder = ""
     @State private var showingAddAlert = false
     
-    private var isSmall: Bool {
-        widget.data.widgetSize == .small
-    }
-    
     var body: some View {
-        VStack(alignment: .leading, spacing: isSmall ? 8 : 12) {
-            HStack {
-                Image(systemName: "phone.fill")
-                    .foregroundColor(.red)
-                    .font(isSmall ? .body : .title3)
-                Text("EMERGENCY")
-                    .font(.system(size: isSmall ? 12 : 14, weight: .bold))
-                    .foregroundColor(.black.opacity(0.7))
-                Spacer()
-                if !isSmall {
-                    Button(action: {
-                        loadCurrentContacts()
-                        showingContactEditor = true
-                    }) {
-                        Image(systemName: "pencil")
-                            .foregroundColor(.red)
-                            .font(.caption)
-                    }
-                }
-            }
-            
-            VStack(alignment: .leading, spacing: isSmall ? 4 : 8) {
-                if widget.data.items.count >= 2 {
-                    HStack {
-                        Text(isSmall ? widget.data.items[0] : "\(widget.data.items[0]): \(widget.data.items[1])")
-                            .font(.system(size: isSmall ? 10 : 12))
-                            .foregroundColor(.black)
-                            .lineLimit(1)
-                        Spacer()
-                        Button(action: { callNumber(widget.data.items[1]) }) {
-                            Image(systemName: "phone.circle.fill")
-                                .foregroundColor(.blue)
-                                .font(isSmall ? .body : .title3)
-                        }
-                    }
-                } else {
-                    HStack {
-                        Text(isSmall ? "Dr. Smith" : "Dr. Smith: (555) 123-4567")
-                            .font(.system(size: isSmall ? 10 : 12))
-                            .foregroundColor(.black)
-                            .lineLimit(1)
-                        Spacer()
-                        Button(action: { callNumber("(555) 123-4567") }) {
-                            Image(systemName: "phone.circle.fill")
-                                .foregroundColor(.blue)
-                                .font(isSmall ? .body : .title3)
-                        }
-                    }
-                }
-                
-                HStack {
-                    Text("Emergency: 911")
-                        .font(.system(size: isSmall ? 10 : 12))
-                        .foregroundColor(.red)
-                    Spacer()
-                    Button(action: { callNumber("911") }) {
-                        Image(systemName: "phone.circle.fill")
-                            .foregroundColor(.red)
-                            .font(isSmall ? .body : .title2)
-                    }
-                }
-            }
-        }
-        .padding(isSmall ? 8 : 16)
-        .background(widget.type.color)
-        .cornerRadius(16)
-        .shadow(color: .gray.opacity(0.2), radius: 4, x: 0, y: 2)
-        .sheet(isPresented: $showingContactEditor) {
-            EmergencyContactEditor(
-                doctorName: $doctorName,
-                doctorPhone: $doctorPhone,
-                onSave: { name, phone in
-                    widget.data.items = [name, phone]
-                    widget.data.lastUpdated = Date()
-                    onSave()
-                }
-            )
-        }
-    }
-    
-    private func loadCurrentContacts() {
-        if widget.data.items.count >= 2 {
-            doctorName = widget.data.items[0]
-            doctorPhone = widget.data.items[1]
-        } else {
-            doctorName = "Dr. Smith"
-            doctorPhone = "(555) 123-4567"
-        }
-    }
-    
-    private func callNumber(_ number: String) {
-        let cleanNumber = number.replacingOccurrences(of: " ", with: "")
-            .replacingOccurrences(of: "(", with: "")
-            .replacingOccurrences(of: ")", with: "")
-            .replacingOccurrences(of: "-", with: "")
-        
-        if let url = URL(string: "tel://\(cleanNumber)") {
-            UIApplication.shared.open(url)
-        }
-    }
-}
-
-// MARK: - Emergency Contact Editor
-struct EmergencyContactEditor: View {
-    @Binding var doctorName: String
-    @Binding var doctorPhone: String
-    let onSave: (String, String) -> Void
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Emergency Contacts")
-                        .font(.title2.bold())
-                        .padding(.horizontal)
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Doctor Name")
-                            .font(.headline)
-                        TextField("Enter doctor's name", text: $doctorName)
-                            .textFieldStyle(.roundedBorder)
-                    }
-                    .padding(.horizontal)
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Phone Number")
-                            .font(.headline)
-                        TextField("Enter phone number", text: $doctorPhone)
-                            .textFieldStyle(.roundedBorder)
-                            .keyboardType(.phonePad)
-                    }
-                    .padding(.horizontal)
-                }
-                
-                Spacer()
-                
-                Button("Save Contact") {
-                    onSave(doctorName, doctorPhone)
-                    dismiss()
-                }
-                .font(.headline)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.red)
-                .cornerRadius(12)
-                .padding(.horizontal)
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-        }
-    }
-}
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: isSmall ? 8 : 12) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("REMINDERS")
-                    .font(.system(size: isSmall ? 12 : 14, weight: .bold))
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.black.opacity(0.7))
                 Spacer()
                 Button(action: { showingAddAlert = true }) {
                     Image(systemName: "plus.circle.fill")
                         .foregroundColor(.orange)
-                        .font(isSmall ? .body : .title3)
+                        .font(.title3)
                 }
             }
             
             if widget.data.items.isEmpty {
-                VStack(spacing: isSmall ? 4 : 8) {
+                VStack(spacing: 8) {
                     Image(systemName: "bell")
-                        .font(isSmall ? .body : .title2)
+                        .font(.title2)
                         .foregroundColor(.orange.opacity(0.5))
-                    if !isSmall {
-                        Text("No reminders")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        Text("Tap + to add one")
-                            .font(.caption2)
-                            .foregroundColor(.gray.opacity(0.7))
-                    }
+                    Text("No reminders")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    Text("Tap + to add one")
+                        .font(.caption2)
+                        .foregroundColor(.gray.opacity(0.7))
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, isSmall ? 4 : 8)
+                .padding(.vertical)
             } else {
-                let displayItems = isSmall ? Array(widget.data.items.prefix(2)) : widget.data.items
-                ForEach(displayItems.indices, id: \.self) { index in
+                ForEach(widget.data.items.indices, id: \.self) { index in
                     HStack(spacing: 8) {
                         Button(action: {
                             markReminderComplete(at: index)
                         }) {
                             Image(systemName: "circle")
                                 .foregroundColor(.orange)
-                                .font(isSmall ? .caption : .body)
                         }
-                        Text(displayItems[index])
-                            .font(.system(size: isSmall ? 11 : 14))
+                        Text(widget.data.items[index])
+                            .font(.system(size: 14))
                             .foregroundColor(.black)
-                            .lineLimit(1)
                         Spacer()
-                        if !isSmall {
-                            Button(action: {
-                                deleteReminder(at: index)
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.gray.opacity(0.6))
-                                    .font(.caption)
-                            }
+                        Button(action: {
+                            deleteReminder(at: index)
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.gray.opacity(0.6))
+                                .font(.caption)
                         }
                     }
                 }
-                
-                if isSmall && widget.data.items.count > 2 {
-                    Text("+\(widget.data.items.count - 2) more")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                        .italic()
-                }
             }
         }
-        .padding(isSmall ? 8 : 16)
+        .padding()
         .background(widget.type.color)
         .cornerRadius(16)
         .shadow(color: .gray.opacity(0.2), radius: 4, x: 0, y: 2)
@@ -323,78 +137,62 @@ struct ScheduleWidget: View {
     let onSave: () -> Void
     @State private var showingScheduleEditor = false
     
-    private var isSmall: Bool {
-        widget.data.widgetSize == .small
-    }
-    
     var body: some View {
-        VStack(alignment: .leading, spacing: isSmall ? 8 : 12) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("SCHEDULE")
-                    .font(.system(size: isSmall ? 12 : 14, weight: .bold))
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.black.opacity(0.7))
                 Spacer()
                 Button(action: { showingScheduleEditor = true }) {
                     Image(systemName: "plus.circle.fill")
                         .foregroundColor(.blue)
-                        .font(isSmall ? .body : .title3)
+                        .font(.title3)
                 }
             }
             
             if widget.data.scheduleItems.isEmpty {
-                VStack(spacing: isSmall ? 4 : 8) {
+                VStack(spacing: 8) {
                     Image(systemName: "calendar")
-                        .font(isSmall ? .body : .title2)
+                        .font(.title2)
                         .foregroundColor(.blue.opacity(0.5))
-                    if !isSmall {
-                        Text("No schedule items")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        Text("Tap + to add events")
-                            .font(.caption2)
-                            .foregroundColor(.gray.opacity(0.7))
-                    }
+                    Text("No schedule items")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    Text("Tap + to add events")
+                        .font(.caption2)
+                        .foregroundColor(.gray.opacity(0.7))
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, isSmall ? 4 : 8)
+                .padding(.vertical)
             } else {
-                let displayItems = isSmall ? Array(widget.data.scheduleItems.prefix(2)) : widget.data.scheduleItems
-                ForEach(displayItems.indices, id: \.self) { index in
-                    HStack(spacing: isSmall ? 8 : 12) {
-                        Text(displayItems[index].icon)
-                            .font(isSmall ? .caption : .title3)
+                ForEach(widget.data.scheduleItems.indices, id: \.self) { index in
+                    HStack(spacing: 12) {
+                        Text(widget.data.scheduleItems[index].icon)
+                            .font(.title3)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(displayItems[index].time)
-                                .font(.system(size: isSmall ? 12 : 16, weight: .medium))
+                            Text(widget.data.scheduleItems[index].time)
+                                .font(.system(size: 16, weight: .medium))
                                 .foregroundColor(.black)
-                            if !isSmall && !displayItems[index].activity.isEmpty {
-                                Text(displayItems[index].activity)
+                            if !widget.data.scheduleItems[index].activity.isEmpty {
+                                Text(widget.data.scheduleItems[index].activity)
                                     .font(.system(size: 12))
                                     .foregroundColor(.gray)
                             }
                         }
                         Spacer()
-                        if !isSmall {
-                            Button(action: {
-                                deleteScheduleItem(at: index)
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.gray.opacity(0.6))
-                                    .font(.caption)
-                            }
+                        Button(action: {
+                            deleteScheduleItem(at: index)
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.gray.opacity(0.6))
+                                .font(.caption)
                         }
                     }
                 }
-                
-                if isSmall && widget.data.scheduleItems.count > 2 {
-                    Text("+\(widget.data.scheduleItems.count - 2) more")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                        .italic()
-                }
             }
         }
-        .padding(isSmall ? 8 : 16)
+        .padding()
         .background(widget.type.color)
         .cornerRadius(16)
         .shadow(color: .gray.opacity(0.2), radius: 4, x: 0, y: 2)
@@ -509,78 +307,54 @@ struct ChildLogWidget: View {
     let onSave: () -> Void
     @State private var showingLogEntry = false
     
-    private var isSmall: Bool {
-        widget.data.widgetSize == .small
-    }
-    
     var body: some View {
-        VStack(alignment: .leading, spacing: isSmall ? 8 : 16) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text("CHILD LOG")
-                    .font(.system(size: isSmall ? 12 : 14, weight: .bold))
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.black.opacity(0.7))
                 Spacer()
                 Button(action: { showingLogEntry = true }) {
                     Image(systemName: "plus.circle.fill")
                         .foregroundColor(.green)
-                        .font(isSmall ? .body : .title3)
+                        .font(.title3)
                 }
             }
             
             // Log category icons
-            if !isSmall {
-                HStack(spacing: 15) {
-                    ForEach(LogCategory.allCases, id: \.self) { category in
-                        Button(action: { quickLog(category: category) }) {
-                            VStack(spacing: 4) {
-                                Text(category.icon)
-                                    .font(.title3)
-                                    .frame(width: 32, height: 32)
-                                    .background(Color.white.opacity(0.7))
-                                    .clipShape(Circle())
-                                Text(category.rawValue)
-                                    .font(.caption2)
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                    }
-                    Spacer()
-                }
-            } else {
-                // Simplified view for small widgets
-                HStack(spacing: 8) {
-                    ForEach(LogCategory.allCases.prefix(3), id: \.self) { category in
-                        Button(action: { quickLog(category: category) }) {
+            HStack(spacing: 15) {
+                ForEach(LogCategory.allCases, id: \.self) { category in
+                    Button(action: { quickLog(category: category) }) {
+                        VStack(spacing: 4) {
                             Text(category.icon)
-                                .font(.body)
-                                .frame(width: 24, height: 24)
+                                .font(.title3)
+                                .frame(width: 32, height: 32)
                                 .background(Color.white.opacity(0.7))
                                 .clipShape(Circle())
+                            Text(category.rawValue)
+                                .font(.caption2)
+                                .foregroundColor(.gray)
                         }
                     }
-                    Spacer()
                 }
+                Spacer()
             }
             
             // Recent entries
             if widget.data.logEntries.isEmpty {
                 Text("No recent entries")
-                    .font(.system(size: isSmall ? 10 : 12))
+                    .font(.system(size: 12))
                     .foregroundColor(.gray)
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.top, isSmall ? 4 : 8)
+                    .padding(.top, 8)
             } else {
-                let displayEntries = isSmall ?
-                    Array(widget.data.logEntries.suffix(1).reversed()) :
-                    Array(widget.data.logEntries.suffix(3).reversed())
-                
                 VStack(alignment: .leading, spacing: 4) {
-                    ForEach(displayEntries, id: \.id) { entry in
+                    ForEach(widget.data.logEntries.suffix(3).reversed(), id: \.id) { entry in
                         HStack(spacing: 8) {
                             Text(entry.category.icon)
                                 .font(.caption)
                             Text(entry.note)
-                                .font(.system(size: isSmall ? 10 : 12))
+                                .font(.caption)
                                 .foregroundColor(.black)
                                 .lineLimit(1)
                             Spacer()
@@ -592,7 +366,7 @@ struct ChildLogWidget: View {
                 }
             }
         }
-        .padding(isSmall ? 8 : 16)
+        .padding()
         .background(widget.type.color)
         .cornerRadius(16)
         .shadow(color: .gray.opacity(0.2), radius: 4, x: 0, y: 2)
@@ -712,37 +486,31 @@ struct WeatherWidget: View {
     @Binding var widget: Widget
     let onSave: () -> Void
     
-    private var isSmall: Bool {
-        widget.data.widgetSize == .small
-    }
-    
     var body: some View {
-        VStack(alignment: .leading, spacing: isSmall ? 8 : 12) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "cloud.sun.fill")
                     .foregroundColor(.blue)
-                    .font(isSmall ? .body : .title2)
+                    .font(.title2)
                 Text("WEATHER")
-                    .font(.system(size: isSmall ? 12 : 14, weight: .bold))
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.black.opacity(0.7))
                 Spacer()
                 Text("72°F")
-                    .font(.system(size: isSmall ? 14 : 18, weight: .bold))
+                    .font(.system(size: 18, weight: .bold))
                     .foregroundColor(.blue)
             }
             
-            if !isSmall {
-                Text("Partly Cloudy")
-                    .font(.system(size: 14))
-                    .foregroundColor(.gray)
-                
-                Text("Perfect day for outdoor play!")
-                    .font(.caption)
-                    .foregroundColor(.blue.opacity(0.8))
-                    .italic()
-            }
+            Text("Partly Cloudy")
+                .font(.system(size: 14))
+                .foregroundColor(.gray)
+            
+            Text("Perfect day for outdoor play!")
+                .font(.caption)
+                .foregroundColor(.blue.opacity(0.8))
+                .italic()
         }
-        .padding(isSmall ? 8 : 16)
+        .padding()
         .background(widget.type.color)
         .cornerRadius(16)
         .shadow(color: .gray.opacity(0.2), radius: 4, x: 0, y: 2)
@@ -756,18 +524,14 @@ struct NotesWidget: View {
     @State private var showingNoteEditor = false
     @State private var currentNote = ""
     
-    private var isSmall: Bool {
-        widget.data.widgetSize == .small
-    }
-    
     var body: some View {
-        VStack(alignment: .leading, spacing: isSmall ? 8 : 12) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "note.text")
                     .foregroundColor(.orange)
-                    .font(isSmall ? .body : .title3)
+                    .font(.title3)
                 Text("NOTES")
-                    .font(.system(size: isSmall ? 12 : 14, weight: .bold))
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.black.opacity(0.7))
                 Spacer()
                 Button(action: {
@@ -781,27 +545,25 @@ struct NotesWidget: View {
             }
             
             if widget.data.items.isEmpty || widget.data.items.first?.isEmpty == true {
-                VStack(spacing: isSmall ? 4 : 8) {
+                VStack(spacing: 8) {
                     Text("No notes yet")
                         .font(.caption)
                         .foregroundColor(.gray)
-                    if !isSmall {
-                        Text("Tap pencil to add")
-                            .font(.caption2)
-                            .foregroundColor(.gray.opacity(0.7))
-                    }
+                    Text("Tap pencil to add")
+                        .font(.caption2)
+                        .foregroundColor(.gray.opacity(0.7))
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, isSmall ? 4 : 8)
+                .padding(.vertical)
             } else {
                 Text(widget.data.items.first ?? "")
-                    .font(.system(size: isSmall ? 11 : 14))
+                    .font(.system(size: 14))
                     .foregroundColor(.black)
                     .multilineTextAlignment(.leading)
-                    .lineLimit(isSmall ? 2 : 4)
+                    .lineLimit(4)
             }
         }
-        .padding(isSmall ? 8 : 16)
+        .padding()
         .background(widget.type.color)
         .cornerRadius(16)
         .shadow(color: .gray.opacity(0.2), radius: 4, x: 0, y: 2)
@@ -870,5 +632,158 @@ struct EmergencyWidget: View {
     @State private var doctorName = ""
     @State private var doctorPhone = ""
     
-    private var isSmall: Bool {
-        widget.data.widgetSize == .small
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "phone.fill")
+                    .foregroundColor(.red)
+                    .font(.title3)
+                Text("EMERGENCY")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.black.opacity(0.7))
+                Spacer()
+                Button(action: {
+                    loadCurrentContacts()
+                    showingContactEditor = true
+                }) {
+                    Image(systemName: "pencil")
+                        .foregroundColor(.red)
+                        .font(.caption)
+                }
+            }
+            
+            VStack(alignment: .leading, spacing: 8) {
+                if widget.data.items.count >= 2 {
+                    HStack {
+                        Text("\(widget.data.items[0]): \(widget.data.items[1])")
+                            .font(.caption)
+                            .foregroundColor(.black)
+                        Spacer()
+                        Button(action: { callNumber(widget.data.items[1]) }) {
+                            Image(systemName: "phone.circle.fill")
+                                .foregroundColor(.blue)
+                                .font(.title3)
+                        }
+                    }
+                } else {
+                    HStack {
+                        Text("Dr. Smith: (555) 123-4567")
+                            .font(.caption)
+                            .foregroundColor(.black)
+                        Spacer()
+                        Button(action: { callNumber("(555) 123-4567") }) {
+                            Image(systemName: "phone.circle.fill")
+                                .foregroundColor(.blue)
+                                .font(.title3)
+                        }
+                    }
+                }
+                
+                HStack {
+                    Text("Emergency: 911")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                    Spacer()
+                    Button(action: { callNumber("911") }) {
+                        Image(systemName: "phone.circle.fill")
+                            .foregroundColor(.red)
+                            .font(.title2)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(widget.type.color)
+        .cornerRadius(16)
+        .shadow(color: .gray.opacity(0.2), radius: 4, x: 0, y: 2)
+        .sheet(isPresented: $showingContactEditor) {
+            EmergencyContactEditor(
+                doctorName: $doctorName,
+                doctorPhone: $doctorPhone,
+                onSave: { name, phone in
+                    widget.data.items = [name, phone]
+                    widget.data.lastUpdated = Date()
+                    onSave()
+                }
+            )
+        }
+    }
+    
+    private func loadCurrentContacts() {
+        if widget.data.items.count >= 2 {
+            doctorName = widget.data.items[0]
+            doctorPhone = widget.data.items[1]
+        } else {
+            doctorName = "Dr. Smith"
+            doctorPhone = "(555) 123-4567"
+        }
+    }
+    
+    private func callNumber(_ number: String) {
+        let cleanNumber = number.replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: "(", with: "")
+            .replacingOccurrences(of: ")", with: "")
+            .replacingOccurrences(of: "-", with: "")
+        
+        if let url = URL(string: "tel://\(cleanNumber)") {
+            UIApplication.shared.open(url)
+        }
+    }
+}
+
+// MARK: - Emergency Contact Editor
+struct EmergencyContactEditor: View {
+    @Binding var doctorName: String
+    @Binding var doctorPhone: String
+    let onSave: (String, String) -> Void
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Emergency Contacts")
+                        .font(.title2.bold())
+                        .padding(.horizontal)
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Doctor Name")
+                            .font(.headline)
+                        TextField("Enter doctor's name", text: $doctorName)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    .padding(.horizontal)
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Phone Number")
+                            .font(.headline)
+                        TextField("Enter phone number", text: $doctorPhone)
+                            .textFieldStyle(.roundedBorder)
+                            .keyboardType(.phonePad)
+                    }
+                    .padding(.horizontal)
+                }
+                
+                Spacer()
+                
+                Button("Save Contact") {
+                    onSave(doctorName, doctorPhone)
+                    dismiss()
+                }
+                .font(.headline)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.red)
+                .cornerRadius(12)
+                .padding(.horizontal)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+}

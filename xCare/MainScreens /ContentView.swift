@@ -371,86 +371,33 @@ struct ContentView: View {
         }
     }
     
-    // MARK: - Unified Widget Section with Size Support
+    // MARK: - Unified Widget Section (Same appearance for all users)
     private var unifiedWidgetSection: some View {
         Group {
+            // Show widgets if logged in and has widgets, otherwise show add widgets prompt
             if appState.isLoggedIn && !userWidgets.isEmpty {
+                // Display user's personalized widgets
                 LazyVStack(spacing: widgetSpacing) {
-                    var processedIndices = Set<Int>()
-                    
                     ForEach(Array(userWidgets.enumerated()), id: \.element.id) { index, widget in
-                        if !processedIndices.contains(index) {
-                            if widget.data.widgetSize == .small {
-                                // Look for next small widget to pair with
-                                if index + 1 < userWidgets.count &&
-                                   userWidgets[index + 1].data.widgetSize == .small &&
-                                   !processedIndices.contains(index + 1) {
-                                    // Two small widgets side by side
-                                    HStack(spacing: 10) {
-                                        WidgetView(
-                                            widget: Binding(
-                                                get: { userWidgets[index] },
-                                                set: { userWidgets[index] = $0 }
-                                            ),
-                                            onDelete: { deleteUserWidget(at: index) },
-                                            onSave: { saveUserSpecificWidgets() }
-                                        )
-                                        .frame(maxWidth: .infinity)
-                                        
-                                        WidgetView(
-                                            widget: Binding(
-                                                get: { userWidgets[index + 1] },
-                                                set: { userWidgets[index + 1] = $0 }
-                                            ),
-                                            onDelete: { deleteUserWidget(at: index + 1) },
-                                            onSave: { saveUserSpecificWidgets() }
-                                        )
-                                        .frame(maxWidth: .infinity)
-                                    }
-                                    .onAppear {
-                                        processedIndices.insert(index)
-                                        processedIndices.insert(index + 1)
-                                    }
-                                } else {
-                                    // Single small widget
-                                    HStack(spacing: 10) {
-                                        WidgetView(
-                                            widget: Binding(
-                                                get: { userWidgets[index] },
-                                                set: { userWidgets[index] = $0 }
-                                            ),
-                                            onDelete: { deleteUserWidget(at: index) },
-                                            onSave: { saveUserSpecificWidgets() }
-                                        )
-                                        .frame(maxWidth: .infinity)
-                                        
-                                        Spacer()
-                                            .frame(maxWidth: .infinity)
-                                    }
-                                    .onAppear {
-                                        processedIndices.insert(index)
-                                    }
-                                }
-                            } else {
-                                // Large widget (full width)
-                                WidgetView(
-                                    widget: Binding(
-                                        get: { userWidgets[index] },
-                                        set: { userWidgets[index] = $0 }
-                                    ),
-                                    onDelete: { deleteUserWidget(at: index) },
-                                    onSave: { saveUserSpecificWidgets() }
-                                )
-                                .onAppear {
-                                    processedIndices.insert(index)
-                                }
+                        WidgetView(
+                            widget: Binding(
+                                get: { userWidgets[index] },
+                                set: { userWidgets[index] = $0 }
+                            ),
+                            onDelete: {
+                                deleteUserWidget(at: index)
+                            },
+                            onSave: {
+                                saveUserSpecificWidgets()
                             }
-                        }
+                        )
                     }
                 }
                 
-                // Add Widget Button
-                Button(action: { showingWidgetSelector = true }) {
+                // Add Widget Button for users with existing widgets
+                Button(action: {
+                    showingWidgetSelector = true
+                }) {
                     HStack(spacing: 8) {
                         Image(systemName: "plus.circle.fill")
                             .font(.system(size: 16))
@@ -466,7 +413,7 @@ struct ContentView: View {
                 }
                 .padding(.top, 8)
             } else {
-                // Show encouraging add widgets message
+                // Show encouraging add widgets message for everyone without widgets
                 VStack(spacing: 16) {
                     Text("Customize Your Dashboard")
                         .font(.system(size: 18, weight: .semibold))
@@ -478,7 +425,9 @@ struct ContentView: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                     
-                    Button(action: { showingWidgetSelector = true }) {
+                    Button(action: {
+                        showingWidgetSelector = true
+                    }) {
                         HStack {
                             Image(systemName: "plus.circle.fill")
                             Text("Add Widget")
@@ -532,7 +481,9 @@ struct ContentView: View {
                 }
                 
                 // Add Widget button for non-logged users only if they have legacy widgets
-                Button(action: { showingWidgetSelector = true }) {
+                Button(action: {
+                    showingWidgetSelector = true
+                }) {
                     HStack(spacing: 8) {
                         Image(systemName: "plus.circle.fill")
                             .font(.system(size: 16))
