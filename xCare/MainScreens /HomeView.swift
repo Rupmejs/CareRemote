@@ -1,7 +1,5 @@
 import SwiftUI
 
-// MARK: - Helper Functions
-
 struct HomeView: View {
     @State private var dragOffset: CGSize = .zero
     @State private var loggedInUserType: String = UserDefaults.standard.string(forKey: "loggedInUserType") ?? "nanny"
@@ -23,7 +21,7 @@ struct HomeView: View {
     private let cardHeight: CGFloat = 500
     private let swipeThreshold: CGFloat = 120
 
-    // MARK: - Dynamic texts
+    // MARK: - Dynamic texts with enhanced styling
     private var matchesHeaderText: String {
         if loggedInUserType == "nanny" {
             return "👨‍👩‍👧‍👦 Your Families"
@@ -31,6 +29,65 @@ struct HomeView: View {
             return "🧑‍🍼 Your Nannies"
         } else {
             return "❤️ Your Matches"
+        }
+    }
+    
+    @ViewBuilder
+    private var enhancedMatchesHeader: some View {
+        if loggedInUserType == "nanny" {
+            HStack(spacing: 8) {
+                Text("👨‍👩‍👧‍👦")
+                    .font(.system(size: 24))
+                Text("Your Families")
+                    .font(.system(size: 20, weight: .heavy, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.1, green: 0.6, blue: 1.0),
+                                Color(red: 0.3, green: 0.2, blue: 0.8),
+                                Color(red: 0.6, green: 0.1, blue: 0.9)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .shadow(color: .blue.opacity(0.4), radius: 4, x: 0, y: 2)
+                    .overlay(
+                        Text("Your Families")
+                            .font(.system(size: 20, weight: .heavy, design: .rounded))
+                            .foregroundColor(.white.opacity(0.3))
+                            .offset(x: 1, y: 1)
+                    )
+            }
+        } else if loggedInUserType == "parent" {
+            HStack(spacing: 8) {
+                Text("🧑‍🍼")
+                    .font(.system(size: 24))
+                Text("Your Nannies")
+                    .font(.system(size: 20, weight: .heavy, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.8, green: 0.2, blue: 0.6),
+                                Color(red: 0.6, green: 0.4, blue: 0.9),
+                                Color(red: 0.2, green: 0.7, blue: 1.0)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .shadow(color: .purple.opacity(0.4), radius: 4, x: 0, y: 2)
+                    .overlay(
+                        Text("Your Nannies")
+                            .font(.system(size: 20, weight: .heavy, design: .rounded))
+                            .foregroundColor(.white.opacity(0.3))
+                            .offset(x: 1, y: 1)
+                    )
+            }
+        } else {
+            Text("❤️ Your Matches")
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .foregroundColor(.blue)
         }
     }
 
@@ -64,29 +121,46 @@ struct HomeView: View {
 
                         Spacer()
 
+                        // Enhanced "Discover & Connect" text
                         Text("Discover & Connect")
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
-                            .foregroundStyle(LinearGradient(
-                                colors: [Color(red: 0.4, green: 0.8, blue: 1.0), Color.blue],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ))
-                            .shadow(color: .black.opacity(0.2), radius: 3, x: 0, y: 2)
+                            .font(.system(size: 28, weight: .heavy, design: .rounded))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.2, green: 0.7, blue: 1.0),
+                                        Color(red: 0.4, green: 0.2, blue: 0.9),
+                                        Color(red: 0.8, green: 0.3, blue: 0.7)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
+                            .overlay(
+                                // Shimmer effect
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(
+                                        LinearGradient(
+                                            colors: [Color.clear, Color.white.opacity(0.6), Color.clear],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ),
+                                        lineWidth: 1
+                                    )
+                                    .blur(radius: 2)
+                            )
                     }
                     .padding(.horizontal)
                     .padding(.top, 20)
 
-                    // Matches section
+                    // Matches section - Using system background color to match ContentView
                     ZStack {
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(Color.white.opacity(0.9))
-                            .shadow(color: .gray.opacity(0.3), radius: 8, x: 0, y: 4)
+                        RoundedRectangle(cornerRadius: 25)
+                            .fill(Color(red: 0.949, green: 0.949, blue: 0.97, opacity: 1.0))  // systemGroupedBackground color
+                            .shadow(color: .gray.opacity(0.3), radius: 10, x: 0, y: 5)
 
                         VStack(spacing: 8) {
                             HStack {
-                                Image(systemName: "heart.fill")
-                                    .font(.title3)
-                                    .foregroundColor(.pink)
                                 Text(matchesHeaderText)
                                     .font(.system(size: 16, weight: .bold, design: .rounded))
                                     .foregroundColor(.blue)
@@ -101,7 +175,7 @@ struct HomeView: View {
                                         .cornerRadius(8)
                                 }
                             }
-                            .padding(.horizontal, 15)
+                            .padding(.horizontal, 20)
                             .padding(.top, 10)
 
                             if matches.isEmpty {
@@ -191,7 +265,7 @@ struct HomeView: View {
                     }
                     .padding(.horizontal, 15)
 
-                    // Cards section (unchanged)
+                    // Cards section
                     VStack(spacing: 8) {
                         Text("Swipe right to like, left to pass.")
                             .font(.system(size: 16, weight: .medium))
@@ -238,10 +312,10 @@ struct HomeView: View {
                                 }
                                 .frame(height: cardHeight)
                                 .frame(maxWidth: .infinity)
-                                .background(Color.white)
+                                .background(Color(red: 0.949, green: 0.949, blue: 0.97, opacity: 1.0))  // systemGroupedBackground color
                                 .cornerRadius(25)
-                                .shadow(color: .gray.opacity(0.2), radius: 15, x: 0, y: 8)
-                                .padding(.horizontal, 15)
+                                .shadow(color: .gray.opacity(0.4), radius: 5, x: 0, y: 2)
+                                .padding(.horizontal, 20)
                             } else if profiles.isEmpty {
                                 VStack(spacing: 25) {
                                     ZStack {
@@ -279,10 +353,10 @@ struct HomeView: View {
                                 }
                                 .frame(height: cardHeight)
                                 .frame(maxWidth: .infinity)
-                                .background(Color.white)
+                                .background(Color(red: 0.949, green: 0.949, blue: 0.97, opacity: 1.0))  // systemGroupedBackground color
                                 .cornerRadius(25)
-                                .shadow(color: .gray.opacity(0.2), radius: 15, x: 0, y: 8)
-                                .padding(.horizontal, 15)
+                                .shadow(color: .gray.opacity(0.3), radius: 10, x: 0, y: 5)
+                                .padding(.horizontal, 20)
                             } else {
                                 ForEach(profiles.indices, id: \.self) { index in
                                     let profile = profiles[index]
@@ -302,7 +376,7 @@ struct HomeView: View {
                     Spacer()
                 }
             }
-            .toolbar(.hidden, for: .navigationBar)
+            .navigationBarHidden(true)
             .fullScreenCover(isPresented: $showProfileEditor) {
                 if !loggedInEmail.isEmpty {
                     ProfileEditorView(
@@ -332,19 +406,24 @@ struct HomeView: View {
             } message: {
                 Text("You matched with \(matchedName)!")
             }
-            .navigationDestination(isPresented: Binding(
-                get: { selectedChat != nil },
-                set: { if !$0 { selectedChat = nil } }
-            )) {
-                Group {
-                    if let chat = selectedChat {
-                        ChatView(
-                            chatId: chat.chatId,
-                            otherUser: chat.otherUser,
-                            otherUserEmail: chat.email
-                        )
-                    } else {
-                        EmptyView()
+        }
+        .sheet(isPresented: Binding(
+            get: { selectedChat != nil },
+            set: { if !$0 { selectedChat = nil } }
+        )) {
+            if let chat = selectedChat {
+                NavigationStack {
+                    ChatView(
+                        chatId: chat.chatId,
+                        otherUser: chat.otherUser,
+                        otherUserEmail: chat.email
+                    )
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button("Back") {
+                                selectedChat = nil
+                            }
+                        }
                     }
                 }
             }
@@ -479,7 +558,7 @@ struct HomeView: View {
         )
     }
 
-    // MARK: - Helpers
+    // MARK: - Helper Functions
     private func getUnreadCount(for email: String) -> Int {
         let key = "unread_\(email)"
         return UserDefaults.standard.integer(forKey: key)
@@ -600,4 +679,3 @@ struct HomeView: View {
         profiles = loaded.shuffled()
     }
 }
-
