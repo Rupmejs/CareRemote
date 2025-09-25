@@ -51,11 +51,17 @@ struct WidgetData: Codable {
     var items: [String] = []
     var lastUpdated: Date = Date()
     var isEnabled: Bool = true
+    var widgetSize: WidgetSize = .large
     
     // Specific data for different widget types
     var temperature: String = ""
     var scheduleItems: [ScheduleItem] = []
     var logEntries: [LogEntry] = []
+}
+
+enum WidgetSize: String, CaseIterable, Codable {
+    case small = "Small"
+    case large = "Large"
 }
 
 struct ScheduleItem: Identifiable, Codable {

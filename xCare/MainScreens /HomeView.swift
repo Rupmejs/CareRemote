@@ -153,11 +153,11 @@ struct HomeView: View {
                     .padding(.horizontal)
                     .padding(.top, 20)
 
-                    // Matches section - Using system background color to match ContentView
+                    // Matches section - Updated to match ContentView styling exactly
                     ZStack {
-                        RoundedRectangle(cornerRadius: 25)
-                            .fill(Color(red: 0.949, green: 0.949, blue: 0.97, opacity: 1.0))  // systemGroupedBackground color
-                            .shadow(color: .gray.opacity(0.3), radius: 10, x: 0, y: 5)
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(Color.white.opacity(0.7))
+                            .shadow(radius: 6)
 
                         VStack(spacing: 8) {
                             HStack {
@@ -259,6 +259,7 @@ struct HomeView: View {
                                     Spacer()
                                 }
                                 .padding(.horizontal, 15)
+                    .padding(.vertical, 10)
                                 .padding(.bottom, 8)
                             }
                         }
@@ -312,9 +313,9 @@ struct HomeView: View {
                                 }
                                 .frame(height: cardHeight)
                                 .frame(maxWidth: .infinity)
-                                .background(Color(red: 0.949, green: 0.949, blue: 0.97, opacity: 1.0))  // systemGroupedBackground color
-                                .cornerRadius(25)
-                                .shadow(color: .gray.opacity(0.4), radius: 5, x: 0, y: 2)
+                                .background(Color.white.opacity(0.7))
+                                .cornerRadius(20)
+                                .shadow(radius: 6)
                                 .padding(.horizontal, 20)
                             } else if profiles.isEmpty {
                                 VStack(spacing: 25) {
@@ -353,9 +354,9 @@ struct HomeView: View {
                                 }
                                 .frame(height: cardHeight)
                                 .frame(maxWidth: .infinity)
-                                .background(Color(red: 0.949, green: 0.949, blue: 0.97, opacity: 1.0))  // systemGroupedBackground color
-                                .cornerRadius(25)
-                                .shadow(color: .gray.opacity(0.3), radius: 10, x: 0, y: 5)
+                                .background(Color.white.opacity(0.7))
+                                .cornerRadius(20)
+                                .shadow(radius: 6)
                                 .padding(.horizontal, 20)
                             } else {
                                 ForEach(profiles.indices, id: \.self) { index in
