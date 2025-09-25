@@ -212,7 +212,7 @@ struct ContentView: View {
                     loadUserSpecificWidgets()
                 }
             }
-            .onChange(of: appState.isLoggedIn) { isLoggedIn in
+            .onChange(of: appState.isLoggedIn) { _, isLoggedIn in
                 if isLoggedIn {
                     // User just logged in - load their widgets
                     loadUserSpecificWidgets()
@@ -233,17 +233,25 @@ struct ContentView: View {
         ZStack(alignment: .top) {
             ScrollView {
                 VStack(spacing: 20) {
-                    GeometryReader { geo -> Color in
-                        DispatchQueue.main.async {
-                            let offset = geo.frame(in: .global).minY
-                            if offset >= 0 {
-                                withAnimation(.easeIn) { showLabels = true }
-                            } else {
-                                withAnimation(.easeOut) { showLabels = false }
+                    GeometryReader { geo in
+                        Color.clear
+                            .onAppear {
+                                let offset = geo.frame(in: .global).minY
+                                if offset >= 0 {
+                                    withAnimation(.easeIn) { showLabels = true }
+                                } else {
+                                    withAnimation(.easeOut) { showLabels = false }
+                                }
+                                scrollOffset = offset
                             }
-                            scrollOffset = offset
-                        }
-                        return Color.clear
+                            .onChange(of: geo.frame(in: .global).minY) { _, offset in
+                                if offset >= 0 {
+                                    withAnimation(.easeIn) { showLabels = true }
+                                } else {
+                                    withAnimation(.easeOut) { showLabels = false }
+                                }
+                                scrollOffset = offset
+                            }
                     }
                     .frame(height: 0)
 
@@ -371,9 +379,18 @@ struct ContentView: View {
                 // Display user's personalized widgets
                 LazyVStack(spacing: widgetSpacing) {
                     ForEach(Array(userWidgets.enumerated()), id: \.element.id) { index, widget in
-                        WidgetView(widget: .constant(userWidgets[index])) {
-                            deleteUserWidget(at: index)
-                        }
+                        WidgetView(
+                            widget: Binding(
+                                get: { userWidgets[index] },
+                                set: { userWidgets[index] = $0 }
+                            ),
+                            onDelete: {
+                                deleteUserWidget(at: index)
+                            },
+                            onSave: {
+                                saveUserSpecificWidgets()
+                            }
+                        )
                     }
                 }
                 

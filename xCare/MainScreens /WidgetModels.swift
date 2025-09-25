@@ -17,7 +17,6 @@ struct Widget: Identifiable, Codable {
 }
 
 enum WidgetType: String, CaseIterable, Codable {
-    case childLocation = "Child's Location"
     case reminders = "Reminders"
     case schedule = "Schedule"
     case childLog = "Child Log"
@@ -27,7 +26,6 @@ enum WidgetType: String, CaseIterable, Codable {
     
     var icon: String {
         switch self {
-        case .childLocation: return "location.fill"
         case .reminders: return "bell.fill"
         case .schedule: return "calendar"
         case .childLog: return "heart.text.square.fill"
@@ -39,7 +37,6 @@ enum WidgetType: String, CaseIterable, Codable {
     
     var color: Color {
         switch self {
-        case .childLocation: return .blue
         case .reminders: return Color(red: 1.0, green: 0.8, blue: 0.8) // Light pink
         case .schedule: return Color(red: 0.8, green: 0.9, blue: 1.0) // Light blue
         case .childLog: return Color(red: 0.95, green: 0.95, blue: 0.85) // Light cream
@@ -56,7 +53,6 @@ struct WidgetData: Codable {
     var isEnabled: Bool = true
     
     // Specific data for different widget types
-    var location: String = ""
     var temperature: String = ""
     var scheduleItems: [ScheduleItem] = []
     var logEntries: [LogEntry] = []
