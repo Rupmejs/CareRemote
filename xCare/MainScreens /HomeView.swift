@@ -15,6 +15,9 @@ struct HomeView: View {
     @State private var matchedName: String = ""
     @State private var selectedChat: (chatId: String, otherUser: String, email: String)? = nil
     @State private var showChatList = false
+    
+    // Real-time updates for chat notifications
+    @State private var refreshTrigger = false
 
     @EnvironmentObject var appState: AppState
 
@@ -153,7 +156,7 @@ struct HomeView: View {
                     .padding(.horizontal)
                     .padding(.top, 20)
 
-                    // Matches section - Updated to match ContentView styling exactly
+                    // Matches section - Updated with real-time notifications
                     ZStack {
                         RoundedRectangle(cornerRadius: 20)
                             .fill(Color.white.opacity(0.7))
@@ -191,11 +194,13 @@ struct HomeView: View {
                                 .padding(.vertical, 8)
                             } else {
                                 HStack(spacing: 12) {
+                                    // Show matches sorted by priority (unread first, then by recency)
                                     ForEach(Array(sortedMatches().prefix(4).enumerated()), id: \.offset) { _, email in
                                         if let profile = loadProfile(for: email) {
                                             Button(action: { openChat(with: profile) }) {
                                                 VStack(spacing: 3) {
                                                     ZStack(alignment: .topTrailing) {
+                                                        // Profile image
                                                         if let firstImage = profile.imageFileNames.first,
                                                            let uiImage = FileStorageHelpers.loadImageFromDocuments(filename: firstImage) {
                                                             Image(uiImage: uiImage)
@@ -215,15 +220,8 @@ struct HomeView: View {
                                                                 )
                                                         }
 
-                                                        if getUnreadCount(for: email) > 0 {
-                                                            Text("\(getUnreadCount(for: email))")
-                                                                .font(.caption2).bold()
-                                                                .foregroundColor(.white)
-                                                                .frame(minWidth: 16, minHeight: 16)
-                                                                .background(Color.red)
-                                                                .clipShape(Circle())
-                                                                .offset(x: 6, y: -6)
-                                                        }
+                                                        // Enhanced notification badges
+                                                        chatNotificationBadge(for: email)
                                                     }
                                                     Text(profile.name)
                                                         .font(.system(size: 9, weight: .medium))
@@ -237,7 +235,7 @@ struct HomeView: View {
                                     if matches.count > 4 {
                                         Button(action: { showChatList = true }) {
                                             VStack(spacing: 3) {
-                                                ZStack {
+                                                ZStack(alignment: .topTrailing) {
                                                     Circle()
                                                         .fill(Color.blue.opacity(0.1))
                                                         .frame(width: 50, height: 50)
@@ -248,6 +246,21 @@ struct HomeView: View {
                                                     Text("+\(matches.count - 4)")
                                                         .font(.system(size: 14, weight: .bold))
                                                         .foregroundColor(.blue)
+                                                    
+                                                    // Show total unread for remaining chats
+                                                    let remainingUnread = getRemainingUnreadCount()
+                                                    if remainingUnread > 0 {
+                                                        ZStack {
+                                                            Circle()
+                                                                .fill(Color.red)
+                                                                .frame(width: 20, height: 20)
+                                                            
+                                                            Text("\(min(remainingUnread, 99))")
+                                                                .font(.system(size: 10, weight: .bold))
+                                                                .foregroundColor(.white)
+                                                        }
+                                                        .offset(x: 6, y: -6)
+                                                    }
                                                 }
                                                 Text("more")
                                                     .font(.system(size: 9, weight: .medium))
@@ -259,7 +272,7 @@ struct HomeView: View {
                                     Spacer()
                                 }
                                 .padding(.horizontal, 15)
-                    .padding(.vertical, 10)
+                                .padding(.vertical, 10)
                                 .padding(.bottom, 8)
                             }
                         }
@@ -401,7 +414,10 @@ struct HomeView: View {
                         }
                 }
             }
-            .onAppear { loadProfiles() }
+            .onAppear {
+                loadProfiles()
+                startRefreshTimer()
+            }
             .alert("🎉 It's a Match!", isPresented: $showMatchAlert) {
                 Button("OK") { }
             } message: {
@@ -428,6 +444,103 @@ struct HomeView: View {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - Chat Notification Badge
+    @ViewBuilder
+    private func chatNotificationBadge(for email: String) -> some View {
+        let unreadCount = getUnreadCount(for: email)
+        let lastMessage = getLastMessage(for: email)
+        let hasJobOffer = lastMessage.contains("📋") || lastMessage.contains("Job offer")
+        
+        if hasJobOffer && unreadCount > 0 {
+            // Job offer notification - priority display
+            ZStack {
+                Circle()
+                    .fill(Color.purple)
+                    .frame(width: 24, height: 24)
+                
+                Text("📋")
+                    .font(.system(size: 12))
+            }
+            .offset(x: 8, y: -8)
+            .shadow(color: .purple.opacity(0.4), radius: 3, x: 0, y: 1)
+        } else if unreadCount > 0 {
+            // Regular message notification
+            ZStack {
+                Circle()
+                    .fill(Color.red)
+                    .frame(width: 20, height: 20)
+                
+                Text("\(min(unreadCount, 99))")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.white)
+            }
+            .offset(x: 6, y: -6)
+            .shadow(color: .red.opacity(0.4), radius: 2, x: 0, y: 1)
+        }
+    }
+    
+    // MARK: - Helper Functions for Chat Notifications
+    private func getUnreadCount(for email: String) -> Int {
+        let unreadKey = "unread_\(loggedInEmail)_from_\(email)"
+        return UserDefaults.standard.integer(forKey: unreadKey)
+    }
+    
+    private func getLastMessage(for email: String) -> String {
+        let chatId = makeChatId(with: email)
+        return UserDefaults.standard.string(forKey: "chatPreview_\(chatId)") ?? ""
+    }
+    
+    private func makeChatId(with other: String) -> String {
+        return [loggedInEmail, other].sorted().joined(separator: "_")
+    }
+    
+    private func sortedMatches() -> [String] {
+        return matches.sorted { a, b in
+            let unreadA = getUnreadCount(for: a)
+            let unreadB = getUnreadCount(for: b)
+            
+            // Check for job offers
+            let hasJobOfferA = getLastMessage(for: a).contains("📋") || getLastMessage(for: a).contains("Job offer")
+            let hasJobOfferB = getLastMessage(for: b).contains("📋") || getLastMessage(for: b).contains("Job offer")
+            
+            // Job offers with unread messages get highest priority
+            if hasJobOfferA && unreadA > 0 && (!hasJobOfferB || unreadB == 0) {
+                return true
+            }
+            if hasJobOfferB && unreadB > 0 && (!hasJobOfferA || unreadA == 0) {
+                return false
+            }
+            
+            // Then by unread count
+            if unreadA != unreadB {
+                return unreadA > unreadB
+            }
+            
+            // Finally by recent messages
+            let timestampA = UserDefaults.standard.double(forKey: "lastMessage_\(makeChatId(with: a))")
+            let timestampB = UserDefaults.standard.double(forKey: "lastMessage_\(makeChatId(with: b))")
+            
+            return timestampA > timestampB
+        }
+    }
+    
+    private func getRemainingUnreadCount() -> Int {
+        var totalUnread = 0
+        let remainingMatches = Array(matches.dropFirst(4))
+        
+        for email in remainingMatches {
+            totalUnread += getUnreadCount(for: email)
+        }
+        
+        return totalUnread
+    }
+    
+    private func startRefreshTimer() {
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            refreshTrigger.toggle()
         }
     }
 
@@ -560,22 +673,6 @@ struct HomeView: View {
     }
 
     // MARK: - Helper Functions
-    private func getUnreadCount(for email: String) -> Int {
-        let key = "unread_\(email)"
-        return UserDefaults.standard.integer(forKey: key)
-    }
-    
-    private func sortedMatches() -> [String] {
-        return matches.sorted { a, b in
-            let unreadA = getUnreadCount(for: a)
-            let unreadB = getUnreadCount(for: b)
-            if unreadA != unreadB { return unreadA > unreadB }
-            let tA = UserDefaults.standard.double(forKey: "lastmsg_\(a)")
-            let tB = UserDefaults.standard.double(forKey: "lastmsg_\(b)")
-            return tA > tB
-        }
-    }
-
     private func loadProfile(for email: String) -> UserProfile? {
         let defaults = UserDefaults.standard
         for key in defaults.dictionaryRepresentation().keys {
@@ -593,8 +690,9 @@ struct HomeView: View {
         let displayName = "\(profile.name), \(profile.age)"
         selectedChat = (chatId, displayName, profile.email)
         
-        let key = "unread_\(profile.email)"
-        UserDefaults.standard.set(0, forKey: key)
+        // Mark as read when opening chat
+        let unreadKey = "unread_\(loggedInEmail)_from_\(profile.email)"
+        UserDefaults.standard.set(0, forKey: unreadKey)
     }
 
     private func handleLike(_ profile: UserProfile) {
